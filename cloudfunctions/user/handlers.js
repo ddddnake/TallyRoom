@@ -15,12 +15,14 @@ async function upsertProfile({ nickName, avatarUrl }, openid, db) {
   if (!updateRes || !updateRes.stats || updateRes.stats.updated === 0) {
     try {
       await db.collection('profiles').add({
-        _id: openid,
-        _openid: openid,
-        nickName,
-        avatarUrl,
-        createdAt: Date.now(),
-        updatedAt: Date.now()
+        data: {
+          _id: openid,
+          _openid: openid,
+          nickName,
+          avatarUrl,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
       })
     } catch (addErr) {
       // 并发情况下可能另一个请求刚好 add 了，此时兜底 update
