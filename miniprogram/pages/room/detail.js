@@ -110,6 +110,8 @@ Page({
       db.collection('room_members').where({ roomId: this.data.id }).watch({
         onChange: (snapshot) => {
           const members = snapshot.docs || []
+          console.log('[watch members] type:', snapshot.type, 'count:', members.length,
+                      'openids:', members.map(m => m.userOpenid + '(' + m.state + ')').join(','))
           this.setData({ visibleMembers: members.filter(m => m.state === 1) })
           this._recalc()
         },
