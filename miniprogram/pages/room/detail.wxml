@@ -4,7 +4,10 @@
     <scroll-view class="users-scroll" scroll-x enable-flex>
       <view class="user-card" wx:for="{{visibleMembers}}" wx:key="userOpenid"
             bindtap="onTapMember" data-openid="{{item.userOpenid}}" data-name="{{item.nickName}}">
-        <view class="user-avatar" style="background-image:url({{item.avatarUrl}})">
+        <view class="user-avatar-wrap">
+          <view class="user-avatar">
+            <image class="user-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill"/>
+          </view>
           <van-tag wx:if="{{info.ownerOpenid === item.userOpenid}}" class="owner-tag" type="primary" round color="#f2826a">房主</van-tag>
         </view>
         <view class="user-name">{{item.nickName}}</view>
