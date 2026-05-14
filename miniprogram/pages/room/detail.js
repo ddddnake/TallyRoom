@@ -1,5 +1,6 @@
 const { call } = require('../../utils/cloud')
 const { compute } = require('../../utils/aggregate')
+const { computeFinal, settle } = require('../../utils/settlement')
 const { formatTime } = require('../../utils/format')
 const app = getApp()
 
@@ -25,7 +26,9 @@ Page({
     editNickName: '',
     showInvite: false,
     inviteQrUrl: '',
-    inviteQrError: ''
+    inviteQrError: '',
+    showSettlement: false,
+    settleData: { summary: [], transfers: [], teaTotal: 0, teaShare: 0, teaShareDisplay: '0', memberCount: 0 }
   },
 
   onLoad(options) {
@@ -394,6 +397,59 @@ Page({
   onCopyCode() {
     if (!this.data.info || !this.data.info.code) return
     wx.setClipboardData({ data: this.data.info.code })
+  },
+
+  async onShowSettlement() {
+    wx.showLoading({ title: '计算中...', mask: true })
+    try {
+      const db = wx.cloud.database()
+      // 拉所有成员（含已退出，去重保留最近一条 joinedAt）
+      const memRes = await db.collection('room_members')
+        .where({ roomId: this.data.id })
+        .get()
+      const memByOpenid = {}
+      ;(memRes.data || []).forEach(m => {
+        const prev = memByOpenid[m.userOpenid]
+        if (!prev || (m.joinedAt || 0) >= (prev.joinedAt || 0)) {
+          memByOpenid[m.userOpenid] = m
+        }
+      })
+      const allMembers = Object.values(memByOpenid)
+
+      // orders 已经从 watch 拿到了，但保险起见这里也拉一次
+      const ordersRes = await db.collection('room_orders')
+        .where({ roomId: this.data.id })
+        .get()
+      const orders = ordersRes.data || []
+
+      const { teaTotal, teaShare, summary } = computeFinal(allMembers, orders)
+      const transfers = settle(summary.map(s => ({
+        openid: s.openid,
+        nickName: s.nickName,
+        score: s.final
+      })))
+
+      this.setData({
+        showSettlement: true,
+        settleData: {
+          teaTotal,
+          teaShare,
+          teaShareDisplay: teaShare % 1 === 0 ? String(teaShare) : teaShare.toFixed(2),
+          memberCount: allMembers.length,
+          summary,
+          transfers
+        }
+      })
+    } catch (e) {
+      console.error('settlement failed', e)
+      wx.showToast({ title: '计算失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+    }
+  },
+
+  onCloseSettlement() {
+    this.setData({ showSettlement: false })
   },
 
   async onLeave() {

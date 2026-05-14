@@ -191,3 +191,83 @@
   border: 2rpx solid #eee; border-radius: 40rpx;
   font-size: 28rpx; text-align: center; color: #666;
 }
+
+/* 结算弹层 */
+.settle-popup {
+  padding: 40rpx 32rpx 32rpx;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.settle-title {
+  font-size: 34rpx; font-weight: 700; text-align: center;
+  margin-bottom: 24rpx;
+}
+.settle-tea-tip {
+  font-size: 24rpx; color: #666;
+  background: #fff8e6; border-radius: 8rpx;
+  padding: 16rpx 20rpx; margin-bottom: 24rpx;
+  line-height: 1.6;
+}
+.settle-tea-amount {
+  color: #ff2a1f; font-weight: 600; padding: 0 4rpx;
+}
+.settle-section-title {
+  font-size: 26rpx; color: #999; font-weight: 600;
+  margin: 24rpx 0 12rpx;
+}
+.settle-list {
+  background: #fafafa; border-radius: 12rpx; padding: 4rpx 16rpx;
+}
+.settle-row {
+  display: flex; align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #eee;
+}
+.settle-row:last-child { border-bottom: none; }
+.settle-name {
+  flex: 1; font-size: 28rpx; color: #333;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.settle-detail {
+  font-size: 22rpx; color: #999;
+  margin-right: 16rpx; display: flex; flex-direction: column; align-items: flex-end;
+  gap: 4rpx;
+}
+.settle-raw, .settle-tea-paid { line-height: 1.2; }
+.settle-final {
+  font-size: 36rpx; font-weight: 700;
+  min-width: 100rpx; text-align: right;
+}
+.settle-final.positive { color: #ff2a1f; }
+.settle-final.negative { color: #52c41a; }
+
+.settle-empty {
+  text-align: center; color: #999; padding: 32rpx 0;
+  font-size: 28rpx;
+}
+.settle-transfers {
+  background: #fafafa; border-radius: 12rpx; padding: 8rpx 24rpx;
+}
+.settle-transfer {
+  display: flex; align-items: center; padding: 20rpx 0;
+  border-bottom: 1rpx solid #eee; font-size: 28rpx;
+}
+.settle-transfer:last-child { border-bottom: none; }
+.settle-from, .settle-to {
+  color: #333; font-weight: 600;
+  flex-shrink: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.settle-arrow { color: #bbb; padding: 0 12rpx; flex-shrink: 0; }
+.settle-amount {
+  color: #ff2a1f; font-weight: 700; font-size: 32rpx;
+  margin-left: auto; padding-left: 16rpx;
+}
+.settle-unit { color: #999; font-size: 24rpx; margin-left: 4rpx; }
+
+.settle-close-btn {
+  margin-top: 32rpx; height: 80rpx; line-height: 80rpx;
+  background: #f5f5f5; border-radius: 40rpx;
+  text-align: center; font-size: 28rpx; color: #666;
+}

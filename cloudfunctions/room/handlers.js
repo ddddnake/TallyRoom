@@ -82,7 +82,8 @@ async function create(event, openid, db, { generateCode }) {
   }
 
   const nickName = profileRes.data[0].nickName
-  const roomName = event.name || nickName + '的房间'
+  const requestedName = (event.name || '').toString().trim()
+  const roomName = (requestedName || (nickName + '的房间')).slice(0, 30)
   const now = Date.now()
 
   // 生成不重复邀请码（内联实现，避免依赖外部模块的兼容问题）

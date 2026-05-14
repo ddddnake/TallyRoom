@@ -86,7 +86,26 @@ Page({
   },
 
   async onCreateRoom() {
-    const res = await call('room', { action: 'create' }, { silent: true })
+    // 先让用户填局名（可留空走默认）
+    const profile = await app.getProfile()
+    const defaultName = (profile && profile.nickName ? profile.nickName : '') + '的房间'
+    const input = await new Promise(resolve => {
+      wx.showModal({
+        title: '创建房间',
+        editable: true,
+        placeholderText: defaultName,
+        content: '',
+        confirmText: '创建',
+        cancelText: '取消',
+        success: (r) => resolve(r),
+        fail: () => resolve({ cancel: true })
+      })
+    })
+    if (!input.confirm) return
+
+    const roomName = (input.content || '').trim() || defaultName
+
+    const res = await call('room', { action: 'create', name: roomName }, { silent: true })
     if (res.ok) {
       wx.navigateTo({ url: '/pages/room/detail?id=' + res.data.roomId })
       return

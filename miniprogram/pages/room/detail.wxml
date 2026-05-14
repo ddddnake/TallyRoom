@@ -55,13 +55,14 @@
 
   <!-- 底部操作栏 -->
   <view class="footer" wx:if="{{!readOnly && info.state === 1}}">
+    <view class="footer-btn" bindtap="onShowSettlement">结算</view>
     <view class="footer-btn" bindtap="onLeave">退出</view>
     <view class="footer-btn" wx:if="{{info.ownerOpenid === myOpenid}}" bindtap="onCloseRoom">关闭房间</view>
   </view>
 
   <!-- 只读提示 -->
   <view class="footer readonly-hint" wx:if="{{readOnly || info.state === 2}}">
-    <text>房间 {{info.state === 2 ? '已关闭' : '只读'}}</text>
+    <view class="footer-btn" bindtap="onShowSettlement">查看结算</view>
   </view>
 
   <!-- 快速计分弹层 -->
@@ -116,6 +117,52 @@
         <button class="invite-share-btn" open-type="share">微信分享给好友</button>
         <view class="invite-close-btn" bindtap="onCloseInvite">关闭</view>
       </view>
+    </view>
+  </van-popup>
+
+  <!-- 结算弹层 -->
+  <van-popup show="{{showSettlement}}" bind:close="onCloseSettlement" position="bottom" round custom-style="max-height:85vh">
+    <view class="settle-popup">
+      <view class="settle-title">本局结算</view>
+
+      <!-- 茶水分摊提示 -->
+      <view class="settle-tea-tip" wx:if="{{settleData.teaTotal > 0}}">
+        茶水共 <text class="settle-tea-amount">{{settleData.teaTotal}}</text> 分，{{settleData.memberCount}} 人均摊每人 <text class="settle-tea-amount">{{settleData.teaShareDisplay}}</text> 分
+      </view>
+
+      <!-- 每人净分（含茶水均摊） -->
+      <view class="settle-section-title">每人净分</view>
+      <view class="settle-list">
+        <view class="settle-row" wx:for="{{settleData.summary}}" wx:key="openid">
+          <view class="settle-name">
+            <text wx:if="{{info.ownerOpenid === item.openid}}" class="owner-crown">👑</text>{{item.nickName}}
+          </view>
+          <view class="settle-detail">
+            <text class="settle-raw" wx:if="{{settleData.teaTotal > 0}}">原 {{item.raw >= 0 ? '+' : ''}}{{item.raw}}</text>
+            <text class="settle-tea-paid" wx:if="{{item.teaPaid > 0}}">付茶水 {{item.teaPaid}}</text>
+          </view>
+          <view class="settle-final {{item.final >= 0 ? 'positive' : 'negative'}}">
+            {{item.final >= 0 ? '+' : ''}}{{item.final}}
+          </view>
+        </view>
+      </view>
+
+      <!-- 转账方案 -->
+      <view class="settle-section-title">最少转账方案</view>
+      <view class="settle-empty" wx:if="{{!settleData.transfers.length}}">
+        无需转账（所有人都是 0 分）
+      </view>
+      <view class="settle-transfers" wx:if="{{settleData.transfers.length}}">
+        <view class="settle-transfer" wx:for="{{settleData.transfers}}" wx:key="index">
+          <text class="settle-from">{{item.fromName}}</text>
+          <text class="settle-arrow">→</text>
+          <text class="settle-to">{{item.toName}}</text>
+          <text class="settle-amount">{{item.amount}}</text>
+          <text class="settle-unit">分</text>
+        </view>
+      </view>
+
+      <view class="settle-close-btn" bindtap="onCloseSettlement">关闭</view>
     </view>
   </van-popup>
 </view>
