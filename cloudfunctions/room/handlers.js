@@ -117,4 +117,72 @@ async function join(event, openid, db) {
   return { ok: true, data: { roomId: room._id } }
 }
 
-module.exports = { create, join }
+async function score(event, openid, db) {
+  const { roomId, entries } = event
+  const { NOT_MEMBER, ROOM_CLOSED, INVALID_AMOUNT, INVALID_TARGET } = require('./lib/codes')
+
+  if (!Array.isArray(entries) || !entries.length) {
+    return { ok: false, code: INVALID_AMOUNT, message: '请至少填写一项' }
+  }
+
+  // 校验当前用户是成员
+  const myMem = await db.collection('room_members').where({ roomId, userOpenid: openid, state: 1 }).get()
+  if (!myMem.data.length) {
+    return { ok: false, code: NOT_MEMBER, message: '你不是该房间成员' }
+  }
+
+  // 校验房间
+  const roomRes = await db.collection('rooms').doc(roomId).get()
+  if (!roomRes.data.length || roomRes.data[0].state !== 1) {
+    return { ok: false, code: ROOM_CLOSED, message: '房间已关闭' }
+  }
+
+  // 取所有在场成员
+  const allMembers = await db.collection('room_members').where({ roomId, state: 1 }).get()
+  const memberOpenids = new Set(allMembers.data.map(m => m.userOpenid))
+  const memberMap = {}
+  allMembers.data.forEach(m => { memberMap[m.userOpenid] = m })
+
+  // 校验 entries
+  for (const e of entries) {
+    if (!Number.isInteger(e.amount) || e.amount <= 0) {
+      return { ok: false, code: INVALID_AMOUNT, message: '金额必须为正整数' }
+    }
+    if (e.toOpenid !== '' && e.toOpenid !== undefined && e.toOpenid !== null) {
+      if (e.toOpenid === openid) {
+        return { ok: false, code: INVALID_TARGET, message: '不能给自己转账' }
+      }
+      if (!memberOpenids.has(e.toOpenid)) {
+        return { ok: false, code: INVALID_TARGET, message: '收款方不是在场成员' }
+      }
+    }
+  }
+
+  const fromNickSnap = myMem.data[0].nickName
+  const now = Date.now()
+
+  // 事务批量写 orders
+  await db.runTransaction(async (tx) => {
+    for (const e of entries) {
+      let toNickSnap = ''
+      if (e.toOpenid && memberMap[e.toOpenid]) {
+        toNickSnap = memberMap[e.toOpenid].nickName
+      }
+      await tx.collection('room_orders').add({
+        data: {
+          roomId,
+          fromOpenid: openid,
+          toOpenid: e.toOpenid || '',
+          amount: e.amount,
+          fromNickSnap,
+          toNickSnap,
+          createdAt: now
+        }
+      })
+    }
+  })
+
+  return { ok: true, data: { count: entries.length } }
+}
+
+module.exports = { create, join, score }

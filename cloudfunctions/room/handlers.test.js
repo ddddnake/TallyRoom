@@ -53,6 +53,87 @@ describe('create', () => {
   })
 })
 
+const { score } = require('./handlers')
+
+describe('score', () => {
+  test('提交计分成功（付A→收B 50，茶水 10）', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert(
+      { _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'x' }
+    )
+    const roomId = await setupRoom(db, 'a_openid')
+    await addMember(db, roomId, 'b_openid', 'B')
+
+    const result = await score({
+      roomId,
+      entries: [
+        { toOpenid: 'b_openid', amount: 50 },
+        { toOpenid: '', amount: 10 }
+      ]
+    }, 'a_openid', db)
+
+    expect(result.ok).toBe(true)
+
+    // 验证 orders 数量
+    const orders = await db.collection('room_orders').where({ roomId }).get()
+    expect(orders.data.length).toBe(2)
+    // 第一条：A → B 50
+    expect(orders.data[0].fromOpenid).toBe('a_openid')
+    expect(orders.data[0].toOpenid).toBe('b_openid')
+    expect(orders.data[0].amount).toBe(50)
+    expect(orders.data[0].fromNickSnap).toBe('A')
+
+    // 第二条：A 茶水 10
+    expect(orders.data[1].fromOpenid).toBe('a_openid')
+    expect(orders.data[1].toOpenid).toBe('')
+    expect(orders.data[1].amount).toBe(10)
+  })
+
+  test('非成员提交计分应拒绝', async () => {
+    const db = setupDB()
+    const roomId = await setupRoom(db, 'a_openid')
+    const result = await score({
+      roomId,
+      entries: [{ toOpenid: 'a_openid', amount: 10 }]
+    }, 'stranger_openid', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('NOT_MEMBER')
+  })
+
+  test('收方不是在场成员应拒绝', async () => {
+    const db = setupDB()
+    const roomId = await setupRoom(db, 'a_openid')
+    const result = await score({
+      roomId,
+      entries: [{ toOpenid: 'fake_openid', amount: 10 }]
+    }, 'a_openid', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('INVALID_TARGET')
+  })
+
+  test('不能给自己转账', async () => {
+    const db = setupDB()
+    const roomId = await setupRoom(db, 'a_openid')
+    const result = await score({
+      roomId,
+      entries: [{ toOpenid: 'a_openid', amount: 10 }]
+    }, 'a_openid', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('INVALID_TARGET')
+  })
+
+  test('金额必须为正', async () => {
+    const db = setupDB()
+    const roomId = await setupRoom(db, 'a_openid')
+    const result = await score({
+      roomId,
+      entries: [{ toOpenid: '', amount: 0 }]
+    }, 'a_openid', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('INVALID_AMOUNT')
+  })
+})
+
 describe('join', () => {
   test('通过邀请码加入房间成功', async () => {
     const db = setupDB()

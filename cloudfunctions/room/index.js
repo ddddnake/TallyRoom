@@ -13,6 +13,8 @@ exports.main = async (event, context) => {
       return handlers.create(data, OPENID, cloud.database(), { generateCode: generate })
     case 'join':
       return handlers.join(data, OPENID, cloud.database())
+    case 'score':
+      return handlers.score(data, OPENID, cloud.database())
     default:
       return { ok: false, code: 'UNKNOWN_ACTION', message: `未知 action: ${action}` }
   }
