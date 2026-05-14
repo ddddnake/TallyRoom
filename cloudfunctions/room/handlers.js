@@ -32,12 +32,15 @@ async function create(event, openid, db, { generateCode }) {
     return { ok: false, code: 'CODE_GENERATION_FAILED', message: '邀请码生成失败' }
   }
 
-  // 先删除之前可能产生的 code=null 脏数据（如果有）
+  // 先清理可能存在的 code=null 脏数据
   await db.collection('rooms').where({ code: null }).remove().catch(() => {})
 
-  // 创建房间
-  const roomAdd = await db.collection('rooms').add({
+  // 生成 roomId，用 doc(id).set() 替代 add() 避免 add API 的兼容问题
+  const roomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8)
+
+  await db.collection('rooms').doc(roomId).set({
     data: {
+      _id: roomId,
       code,
       name: roomName,
       state: 1,
@@ -51,7 +54,7 @@ async function create(event, openid, db, { generateCode }) {
   // 添加房主为成员
   await db.collection('room_members').add({
     data: {
-      roomId: roomAdd._id,
+      roomId,
       userOpenid: openid,
       nickName,
       avatarUrl: profileRes.data[0].avatarUrl,
@@ -60,7 +63,7 @@ async function create(event, openid, db, { generateCode }) {
     }
   })
 
-  return { ok: true, data: { roomId: roomAdd._id, code } }
+  return { ok: true, data: { roomId, code } }
 }
 
 async function join(event, openid, db) {

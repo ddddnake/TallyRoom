@@ -47,6 +47,15 @@ class Collection {
         if (!rec) throw new Error(`doc ${id} not found in ${this.name}`)
         Object.assign(rec, data)
         return { stats: { updated: 1 } }
+      },
+      set: async ({ data }) => {
+        const idx = this._records.findIndex(r => r._id === id)
+        if (idx >= 0) {
+          Object.assign(this._records[idx], data)
+        } else {
+          this._records.push({ _id: id, ...data })
+        }
+        return { stats: { updated: 1 } }
       }
     }
   }
