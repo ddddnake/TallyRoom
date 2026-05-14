@@ -8,5 +8,20 @@
   display: flex; align-items: center; justify-content: space-between;
   background: #fff; border-radius: 12rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx;
 }
-.room-name { font-size: 30rpx; font-weight: 600; color: #333; display: block; }
-.room-date { font-size: 24rpx; color: #999; display: block; margin-top: 6rpx; }
+.room-info { flex: 1; min-width: 0; }
+.room-name {
+  font-size: 30rpx; font-weight: 600; color: #333; display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.room-meta {
+  display: flex; align-items: center; gap: 8rpx;
+  margin-top: 8rpx;
+}
+.room-date { font-size: 24rpx; color: #999; }
+.room-duration { font-size: 24rpx; color: #999; }
+.room-score {
+  font-size: 36rpx; font-weight: 700;
+  flex-shrink: 0; margin-left: 16rpx;
+}
+.room-score.positive { color: #FF5032; }
+.room-score.negative { color: #52c41a; }

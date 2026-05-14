@@ -56,6 +56,11 @@ Page({
     const myOpenid = profile._openid || profile._id
     if (myOpenid) this.setData({ myOpenid })
 
+    // 进入房间页时先对当前房间做一次 sweep（如果已知 roomId）
+    if (this.data.id) {
+      await call('room', { action: 'sweep', roomId: this.data.id }, { silent: true })
+    }
+
     // 扫小程序码进入：只有邀请码没有 roomId，先 join 拿到 roomId
     if (!this.data.id && this.data.pendingJoinCode) {
       const { ok, data } = await call('room', { action: 'join', code: this.data.pendingJoinCode })

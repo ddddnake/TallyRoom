@@ -22,6 +22,9 @@ Page({
     const g = hours < 11 ? '早上好' : hours < 14 ? '中午好' : hours < 18 ? '下午好' : '晚上好'
     this.setData({ greeting: g + '，' + profile.nickName })
 
+    // 先 sweep 一遍：把超时的进行中房间自动关闭（静默）
+    await call('room', { action: 'sweep' }, { silent: true })
+
     // 检查是否在某进行中房间
     const db = wx.cloud.database()
     const myRooms = await db.collection('room_members')
@@ -83,10 +86,16 @@ Page({
   },
 
   async onCreateRoom() {
-    const { ok, data } = await call('room', { action: 'create' })
-    if (ok) {
-      wx.navigateTo({ url: '/pages/room/detail?id=' + data.roomId })
+    const res = await call('room', { action: 'create' }, { silent: true })
+    if (res.ok) {
+      wx.navigateTo({ url: '/pages/room/detail?id=' + res.data.roomId })
+      return
     }
+    if (res.code === 'ALREADY_IN_ROOM' && res.data && res.data.roomId) {
+      await this._promptResume(res.message, res.data.roomId)
+      return
+    }
+    wx.showToast({ title: res.message || '创建失败', icon: 'none' })
   },
 
   onShowJoin() { this.setData({ showJoin: true, code: '' }) },
@@ -97,10 +106,34 @@ Page({
   },
 
   async onJoin() {
-    const { ok, data } = await call('room', { action: 'join', code: this.data.code })
-    if (ok) {
+    const res = await call('room', { action: 'join', code: this.data.code }, { silent: true })
+    if (res.ok) {
       this.setData({ showJoin: false })
-      wx.navigateTo({ url: '/pages/room/detail?id=' + data.roomId })
+      wx.navigateTo({ url: '/pages/room/detail?id=' + res.data.roomId })
+      return
     }
+    if (res.code === 'ALREADY_IN_ROOM' && res.data && res.data.roomId) {
+      this.setData({ showJoin: false })
+      await this._promptResume(res.message, res.data.roomId)
+      return
+    }
+    wx.showToast({ title: res.message || '加入失败', icon: 'none' })
+  },
+
+  _promptResume(message, roomId) {
+    return new Promise(resolve => {
+      wx.showModal({
+        title: '提示',
+        content: message || '你还在另一个进行中的房间',
+        confirmText: '前往',
+        cancelText: '我知道了',
+        success(r) {
+          if (r.confirm) {
+            wx.navigateTo({ url: '/pages/room/detail?id=' + roomId })
+          }
+          resolve()
+        }
+      })
+    })
   }
 })

@@ -4,11 +4,14 @@
     <view class="room-item" wx:for="{{rooms}}" wx:key="_id" bindtap="onTapRoom" data-id="{{item._id}}" data-state="{{item.state}}">
       <view class="room-info">
         <text class="room-name">{{item.name}}</text>
-        <text class="room-date">{{item.dateText}}</text>
+        <view class="room-meta">
+          <text class="room-date">{{item.dateText}}</text>
+          <text class="room-duration">· {{item.durationText}}</text>
+        </view>
       </view>
-      <van-tag type="{{item.state === 1 ? 'primary' : 'default'}}" round color="{{item.state === 1 ? '#52c41a' : '#999'}}">
-        {{item.state === 1 ? '进行中' : '已关闭'}}
-      </van-tag>
+      <view class="room-score {{item.myScore >= 0 ? 'positive' : 'negative'}}">
+        {{item.myScoreText}}
+      </view>
     </view>
   </view>
 </view>

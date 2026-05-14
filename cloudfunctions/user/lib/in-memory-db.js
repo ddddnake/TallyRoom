@@ -62,44 +62,32 @@ class Collection {
   }
 
   where(query) {
-    const records = this._records
+    return this._buildQuery(query, null, null)
+  }
+
+  _buildQuery(query, sort, limitN) {
+    const self = this
+    const matchAll = () => self._records.filter(r =>
+      Object.entries(query).every(([k, v]) => r[k] === v)
+    )
     return {
       get: async () => {
-        const matched = records.filter(r => {
-          return Object.entries(query).every(([k, v]) => r[k] === v)
+        let arr = matchAll()
+        if (sort) arr = arr.slice().sort((a, b) => {
+          const va = a[sort.field], vb = b[sort.field]
+          return sort.dir === 'desc' ? vb - va : va - vb
         })
-        return { data: matched }
+        if (limitN != null) arr = arr.slice(0, limitN)
+        return { data: arr }
       },
-      orderBy(field, dir) {
-        return {
-          get: async () => {
-            const matched = records.filter(r => {
-              return Object.entries(query).every(([k, v]) => r[k] === v)
-            })
-            matched.sort((a, b) => {
-              const va = a[field], vb = b[field]
-              return dir === 'desc' ? vb - va : va - vb
-            })
-            return { data: matched }
-          }
-        }
-      },
-      limit(n) {
-        return {
-          get: async () => {
-            const matched = records.filter(r => {
-              return Object.entries(query).every(([k, v]) => r[k] === v)
-            })
-            return { data: matched.slice(0, n) }
-          }
-        }
-      },
+      orderBy: (field, dir) => self._buildQuery(query, { field, dir }, limitN),
+      limit: (n) => self._buildQuery(query, sort, n),
       remove: async () => {
-        const before = this._records.length
-        this._records = records.filter(r => {
-          return !Object.entries(query).every(([k, v]) => r[k] === v)
-        })
-        return { stats: { removed: before - this._records.length } }
+        const before = self._records.length
+        self._records = self._records.filter(r =>
+          !Object.entries(query).every(([k, v]) => r[k] === v)
+        )
+        return { stats: { removed: before - self._records.length } }
       }
     }
   }

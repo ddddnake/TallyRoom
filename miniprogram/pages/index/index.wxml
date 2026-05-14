@@ -28,7 +28,7 @@
     </view>
     <view class="stats-item">
       <text class="stats-value {{stats.netScore >= 0 ? 'positive' : 'negative'}}">{{stats.netScore >= 0 ? '+' : ''}}{{stats.netScore}}</text>
-      <text class="stats-label">净输赢</text>
+      <text class="stats-label">净积分</text>
     </view>
   </view>
 

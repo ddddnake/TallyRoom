@@ -1,8 +1,52 @@
-const { NO_PROFILE, ROOM_NOT_FOUND, ROOM_CLOSED } = require('./lib/codes')
+const { NO_PROFILE, ROOM_NOT_FOUND, ROOM_CLOSED, ALREADY_IN_ROOM } = require('./lib/codes')
+
+// 房间惰性关闭阈值：最后一次活动距今超过 12 小时则自动关闭
+const INACTIVITY_THRESHOLD_MS = 12 * 60 * 60 * 1000
+
+// 判定一个进行中的房间是否应该自动关闭；返回 true 表示已关闭
+async function _sweepRoomIfStale(room, db) {
+  if (!room || room.state !== 1) return false
+  const now = Date.now()
+
+  // 取最后一笔订单
+  const ordersRes = await db.collection('room_orders')
+    .where({ roomId: room._id })
+    .orderBy('createdAt', 'desc')
+    .limit(1)
+    .get()
+  const lastOrderAt = (ordersRes.data && ordersRes.data[0] && ordersRes.data[0].createdAt) || room.createdAt || 0
+  if (now - lastOrderAt < INACTIVITY_THRESHOLD_MS) return false
+
+  // 超时：关闭房间 + 把所有在场成员置为已退出
+  await db.collection('rooms').doc(room._id).update({
+    data: { state: 2, closedAt: now }
+  })
+  const members = await db.collection('room_members').where({ roomId: room._id, state: 1 }).get()
+  for (const m of members.data || []) {
+    await db.collection('room_members').doc(m._id).update({
+      data: { state: 2, leftAt: now }
+    }).catch(e => console.error('sweep member update failed', m._id, e))
+  }
+  return true
+}
+
+// 查询当前用户参与的进行中房间（已自动 sweep 过期的）
+async function _findMyActiveRoom(openid, db) {
+  const memRes = await db.collection('room_members')
+    .where({ userOpenid: openid, state: 1 })
+    .get()
+  for (const m of memRes.data || []) {
+    const roomRes = await db.collection('rooms').doc(m.roomId).get().catch(() => null)
+    const room = roomRes && (Array.isArray(roomRes.data) ? roomRes.data[0] : roomRes.data)
+    if (!room || room.state !== 1) continue
+    const closed = await _sweepRoomIfStale(room, db)
+    if (!closed) return { room, member: m }
+  }
+  return null
+}
 
 async function create(event, openid, db, { generateCode }) {
-  // 查 profile：先按 _id 查（我们 upsertProfile 时把 _id 设成了 openid）
-  // 再按 _openid 查作为兜底
+  // 查 profile
   let profileRes = await db.collection('profiles').where({ _id: openid }).limit(1).get().catch(() => ({ data: [] }))
   if (!profileRes.data || !profileRes.data.length) {
     profileRes = await db.collection('profiles').where({ _openid: openid }).limit(1).get().catch(() => ({ data: [] }))
@@ -10,6 +54,17 @@ async function create(event, openid, db, { generateCode }) {
   console.log('[create] openid:', openid, 'profile found:', profileRes.data && profileRes.data.length)
   if (!profileRes.data || !profileRes.data.length) {
     return { ok: false, code: NO_PROFILE, message: '请先设置头像和昵称' }
+  }
+
+  // 单房间限制：先 sweep 过期的，再判断是否还有活跃房间
+  const active = await _findMyActiveRoom(openid, db)
+  if (active) {
+    return {
+      ok: false,
+      code: ALREADY_IN_ROOM,
+      message: '你还在房间「' + active.room.name + '」中，先退出才能创建新房间',
+      data: { roomId: active.room._id }
+    }
   }
 
   const nickName = profileRes.data[0].nickName
@@ -79,6 +134,28 @@ async function join(event, openid, db) {
     return { ok: false, code: ROOM_NOT_FOUND, message: '房间不存在' }
   }
   const room = roomRes.data[0]
+  // 对目标房间先 sweep 一次（可能已经超时该关）
+  await _sweepRoomIfStale(room, db)
+  // 重读最新状态
+  const freshRes = await db.collection('rooms').doc(room._id).get()
+  const freshRoom = Array.isArray(freshRes.data) ? freshRes.data[0] : freshRes.data
+  if (!freshRoom || freshRoom.state !== 1) {
+    return { ok: false, code: ROOM_CLOSED, message: '房间已关闭' }
+  }
+
+  // 单房间限制：不能同时在多个进行中房间（但加入"自己已在的房间"是幂等，不算冲突）
+  const active = await _findMyActiveRoom(openid, db)
+  if (active && active.room._id !== freshRoom._id) {
+    return {
+      ok: false,
+      code: ALREADY_IN_ROOM,
+      message: '你还在房间「' + active.room.name + '」中，先退出才能加入新房间',
+      data: { roomId: active.room._id }
+    }
+  }
+
+  // 用最新的 room 字段
+  Object.assign(room, freshRoom)
   if (room.state !== 1) {
     return { ok: false, code: ROOM_CLOSED, message: '房间已关闭' }
   }
@@ -281,4 +358,32 @@ async function close(event, openid, db) {
   return { ok: true }
 }
 
-module.exports = { create, join, score, leave, close }
+// 扫描当前用户所有 state=1 的房间，惰性关闭超时房间
+// 入参：{ roomId? }  传则只扫该房间，不传则扫我所有进行中的房间
+async function sweep(event, openid, db) {
+  const { roomId } = event || {}
+  let closed = 0
+  if (roomId) {
+    const roomRes = await db.collection('rooms').doc(roomId).get().catch(() => null)
+    const room = roomRes && (Array.isArray(roomRes.data) ? roomRes.data[0] : roomRes.data)
+    if (room && (await _sweepRoomIfStale(room, db))) closed++
+    return { ok: true, data: { closed } }
+  }
+
+  const memRes = await db.collection('room_members')
+    .where({ userOpenid: openid, state: 1 })
+    .get()
+  const seen = new Set()
+  for (const m of memRes.data || []) {
+    if (seen.has(m.roomId)) continue
+    seen.add(m.roomId)
+    const roomRes = await db.collection('rooms').doc(m.roomId).get().catch(() => null)
+    const room = roomRes && (Array.isArray(roomRes.data) ? roomRes.data[0] : roomRes.data)
+    if (!room) continue
+    if (await _sweepRoomIfStale(room, db)) closed++
+  }
+  return { ok: true, data: { closed } }
+}
+
+module.exports = { create, join, score, leave, close, sweep }
+

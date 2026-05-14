@@ -273,3 +273,100 @@ describe('close', () => {
     expect(result.code).toBe('NOT_OWNER')
   })
 })
+
+describe('单房间限制', () => {
+  test('已在某进行中房间，再 create 返回 ALREADY_IN_ROOM', async () => {
+    const db = setupDB()
+    await setupRoom(db, 'a_openid')
+
+    const result = await create({}, 'a_openid', db, { generateCode: generate })
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('ALREADY_IN_ROOM')
+    expect(result.data.roomId).toBeDefined()
+  })
+
+  test('已在某进行中房间，加入另一个房间返回 ALREADY_IN_ROOM', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert({ _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'x' })
+
+    // a 创建房间 1
+    await setupRoom(db, 'a_openid')
+    // b 创建房间 2（注意 b 还没在任何房间）
+    const r2 = await create({}, 'b_openid', db, { generateCode: generate })
+    const code2 = r2.data.code
+
+    // a 想加入房间 2，应被拒绝
+    const result = await join({ code: code2 }, 'a_openid', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('ALREADY_IN_ROOM')
+  })
+
+  test('加入自己已经在的房间是幂等的', async () => {
+    const db = setupDB()
+    const roomRes = await create({}, 'a_openid', db, { generateCode: generate })
+    const code = roomRes.data.code
+
+    // 同一个用户再 join 一次自己创建的房间
+    const result = await join({ code }, 'a_openid', db)
+    expect(result.ok).toBe(true)
+    expect(result.data.roomId).toBe(roomRes.data.roomId)
+  })
+
+  test('退出后可以创建新房间', async () => {
+    const db = setupDB()
+    const r1 = await create({}, 'a_openid', db, { generateCode: generate })
+    await leave({ roomId: r1.data.roomId }, 'a_openid', db)
+
+    const r2 = await create({}, 'a_openid', db, { generateCode: generate })
+    expect(r2.ok).toBe(true)
+  })
+})
+
+describe('sweep 自动关闭', () => {
+  const { sweep } = require('./handlers')
+  const TWELVE_HOURS = 12 * 60 * 60 * 1000
+
+  test('最近活跃的房间不会被关闭', async () => {
+    const db = setupDB()
+    const r = await create({}, 'a_openid', db, { generateCode: generate })
+
+    const result = await sweep({ roomId: r.data.roomId }, 'a_openid', db)
+    expect(result.ok).toBe(true)
+    expect(result.data.closed).toBe(0)
+
+    const room = (await db.collection('rooms').doc(r.data.roomId).get()).data[0]
+    expect(room.state).toBe(1)
+  })
+
+  test('超过 12 小时无活动的房间会被关闭并清理成员', async () => {
+    const db = setupDB()
+    const r = await create({}, 'a_openid', db, { generateCode: generate })
+
+    // 把房间 createdAt 调成 13 小时前
+    const old = Date.now() - 13 * 60 * 60 * 1000
+    await db.collection('rooms').doc(r.data.roomId).update({ data: { createdAt: old } })
+
+    const result = await sweep({ roomId: r.data.roomId }, 'a_openid', db)
+    expect(result.ok).toBe(true)
+    expect(result.data.closed).toBe(1)
+
+    const room = (await db.collection('rooms').doc(r.data.roomId).get()).data[0]
+    expect(room.state).toBe(2)
+
+    // 成员也都 state=2
+    const mems = await db.collection('room_members').where({ roomId: r.data.roomId, state: 1 }).get()
+    expect(mems.data.length).toBe(0)
+  })
+
+  test('sweep 后用户可以创建新房间', async () => {
+    const db = setupDB()
+    const r1 = await create({}, 'a_openid', db, { generateCode: generate })
+    // 调旧
+    await db.collection('rooms').doc(r1.data.roomId).update({ data: { createdAt: Date.now() - 13 * 60 * 60 * 1000 } })
+
+    // create 内部会先 sweep，应能成功创建新房间
+    const r2 = await create({}, 'a_openid', db, { generateCode: generate })
+    expect(r2.ok).toBe(true)
+    expect(r2.data.roomId).not.toBe(r1.data.roomId)
+  })
+})

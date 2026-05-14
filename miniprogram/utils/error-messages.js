@@ -7,6 +7,7 @@ const MAP = {
   INVALID_AMOUNT: '金额必须为正整数',
   INVALID_TARGET: '收款方无效',
   CODE_GENERATION_FAILED: '邀请码生成失败，请重试',
+  ALREADY_IN_ROOM: '你还在另一个进行中的房间里',
   UNKNOWN: '服务异常，请重试'
 }
 
