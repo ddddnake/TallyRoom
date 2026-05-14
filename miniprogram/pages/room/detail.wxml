@@ -1,0 +1,74 @@
+<view class="room-page">
+  <!-- 成员横滚 -->
+  <view class="users">
+    <scroll-view class="users-scroll" scroll-x enable-flex>
+      <view class="user-card" wx:for="{{visibleMembers}}" wx:key="userOpenid">
+        <view class="user-avatar" style="background-image:url({{item.avatarUrl}})">
+          <van-tag wx:if="{{info.ownerOpenid === item.userOpenid}}" class="owner-tag" type="primary" round color="#f2826a">房主</van-tag>
+        </view>
+        <view class="user-name">{{item.nickName}}</view>
+        <view class="user-score {{aggregated[item.userOpenid] >= 0 ? 'positive' : 'negative'}}">
+          {{aggregated[item.userOpenid] >= 0 ? '+' : ''}}{{aggregated[item.userOpenid] || 0}}
+        </view>
+      </view>
+
+      <!-- 茶水虚拟卡片 -->
+      <view class="user-card tea-card">
+        <view class="user-avatar tea-avatar">
+          <image src="../../images/tea.png" mode="widthFix" style="width:100%;height:100%"/>
+        </view>
+        <view class="user-name">茶水费</view>
+        <view class="user-score positive">+{{teaTotal || 0}}</view>
+      </view>
+
+      <!-- 邀请按钮 -->
+      <button class="user-card invite-card" open-type="share">
+        <view class="user-avatar invite-avatar">
+          <image src="../../images/invite.png" mode="widthFix" style="width:100%;height:100%"/>
+        </view>
+        <view class="user-name">邀请好友</view>
+        <view class="user-score" style="font-size:24rpx;color:#999">点击分享</view>
+      </button>
+    </scroll-view>
+  </view>
+
+  <!-- 消息流 -->
+  <scroll-view class="msg-scroll" scroll-y="{{true}}" scroll-into-view="{{lastMsgId}}">
+    <view class="msg-item" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+      <view class="msg-time">{{item.timeText}}</view>
+      <view class="msg-text">{{item.text}}</view>
+    </view>
+    <van-empty wx:if="{{!messages.length}}" description="暂无记录" />
+  </scroll-view>
+
+  <!-- 底部操作栏 -->
+  <view class="footer" wx:if="{{!readOnly && info.state === 1}}">
+    <view class="footer-btn" bindtap="onShowScore">支出</view>
+    <view class="footer-btn" bindtap="onLeave">退出</view>
+    <view class="footer-btn" wx:if="{{info.ownerOpenid === myOpenid}}" bindtap="onCloseRoom">关闭房间</view>
+  </view>
+
+  <!-- 只读提示 -->
+  <view class="footer readonly-hint" wx:if="{{readOnly || info.state === 2}}">
+    <text>房间 {{info.state === 2 ? '已关闭' : '只读'}}</text>
+  </view>
+
+  <!-- 计分弹层 -->
+  <van-popup show="{{showScorePopup}}" bind:close="onCloseScore" custom-style="background:none">
+    <view class="score-popup">
+      <view class="score-hint">填写你赢得的分数（给每个对手）</view>
+      <view class="score-item" wx:for="{{visibleMembers}}" wx:key="userOpenid" wx:if="{{item.userOpenid !== myOpenid}}">
+        <text class="score-name">{{item.nickName}}</text>
+        <input class="score-input" type="number" placeholder="分数" value="{{scoreForm[item.userOpenid]}}" data-key="{{item.userOpenid}}" bindinput="onScoreInput"/>
+      </view>
+      <view class="score-item">
+        <text class="score-name">茶水</text>
+        <input class="score-input" type="number" placeholder="赢的一方操作" value="{{scoreForm._tea}}" data-key="_tea" bindinput="onScoreInput"/>
+      </view>
+      <van-button type="primary" block round color="#FF5032" bindtap="onSubmitScore">确定</van-button>
+    </view>
+    <view class="score-close" bindtap="onCloseScore">
+      <van-icon name="clear" color="#fff" size="48rpx"/>
+    </view>
+  </van-popup>
+</view>
