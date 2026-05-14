@@ -1,6 +1,7 @@
 const { call } = require('../../utils/cloud')
 const { compute } = require('../../utils/aggregate')
 const { formatTime } = require('../../utils/format')
+const app = getApp()
 
 Page({
   data: {
@@ -19,10 +20,35 @@ Page({
   },
 
   onLoad(options) {
-    this.setData({ id: options.id, readOnly: options.readOnly === '1' })
+    this.setData({
+      id: options.id,
+      readOnly: options.readOnly === '1',
+      shareCode: options.code || ''
+    })
   },
 
-  onShow() {
+  async onShow() {
+    // 通过分享链接进入：先确保已设置头像昵称
+    if (this.data.shareCode) {
+      const profile = await app.getProfile()
+      if (!profile) {
+        // 暂存分享 code，引导页完成后由首页跳转
+        wx.setStorageSync('pending_share_code', this.data.shareCode)
+        wx.setStorageSync('pending_share_room', this.data.id)
+        wx.redirectTo({ url: '/pages/setup/profile' })
+        return
+      }
+    }
+
+    // 通过分享链接进入：先确保已加入房间
+    if (this.data.shareCode && !this._joined) {
+      const { ok } = await call('room', { action: 'join', code: this.data.shareCode })
+      if (!ok) {
+        wx.switchTab({ url: '/pages/index/index' })
+        return
+      }
+      this._joined = true
+    }
     this._startWatchers()
   },
 
@@ -158,9 +184,10 @@ Page({
   },
 
   onShareAppMessage() {
+    const code = (this.data.info && this.data.info.code) || ''
     return {
       title: '邀请你加入打牌记账房间',
-      path: '/pages/room/detail?id=' + this.data.id
+      path: '/pages/room/detail?id=' + this.data.id + (code ? '&code=' + code : '')
     }
   }
 })
