@@ -23,43 +23,58 @@ Page({
     this.setData({
       id: options.id,
       readOnly: options.readOnly === '1',
-      shareCode: options.code || ''
+      // 是否需要尝试加入：来自分享（带 code）或外部跳转（带 fromShare）
+      needsJoin: !!(options.code || options.fromShare)
     })
   },
 
   async onShow() {
-    // 通过分享链接进入：先确保已设置头像昵称
-    if (this.data.shareCode) {
-      const profile = await app.getProfile()
-      if (!profile) {
-        // 暂存分享 code，引导页完成后由首页跳转
-        wx.setStorageSync('pending_share_code', this.data.shareCode)
+    // 拿当前用户 profile（顺便取 openid）
+    const profile = await app.getProfile()
+    if (!profile) {
+      // 没设置过头像昵称：暂存当前房间，跳引导页
+      if (this.data.needsJoin) {
         wx.setStorageSync('pending_share_room', this.data.id)
-        wx.redirectTo({ url: '/pages/setup/profile' })
-        return
       }
-      if (profile._openid) this.setData({ myOpenid: profile._openid })
-    } else {
-      // 普通进入也要拿 openid 用于 wxml 渲染
-      const profile = await app.getProfile()
-      if (profile && profile._openid) this.setData({ myOpenid: profile._openid })
+      wx.redirectTo({ url: '/pages/setup/profile' })
+      return
     }
+    if (profile._openid) this.setData({ myOpenid: profile._openid })
 
-    // 通过分享链接进入：先确保已加入房间
-    if (this.data.shareCode && !this._joined) {
-      console.log('[room] joining via share code:', this.data.shareCode, 'roomId:', this.data.id)
-      const { ok, data, code } = await call('room', { action: 'join', code: this.data.shareCode })
-      console.log('[room] join result:', { ok, data, code })
-      if (!ok) {
-        wx.switchTab({ url: '/pages/index/index' })
-        return
-      }
-      // 如果服务端返回的 roomId 与 url 中的不一致，以服务端为准
-      if (data && data.roomId && data.roomId !== this.data.id) {
-        this.setData({ id: data.roomId })
+    // 检查当前用户是否已是房间成员；不是则尝试加入
+    if (!this._joined && !this.data.readOnly) {
+      const db = wx.cloud.database()
+      const memRes = await db.collection('room_members')
+        .where({ roomId: this.data.id, userOpenid: profile._openid, state: 1 })
+        .limit(1).get()
+
+      if (!memRes.data.length) {
+        // 不是成员 → 查房间 code 然后 join
+        const roomRes = await db.collection('rooms').doc(this.data.id).get().catch(() => null)
+        const room = roomRes && roomRes.data
+        if (!room) {
+          wx.showToast({ title: '房间不存在', icon: 'none' })
+          wx.switchTab({ url: '/pages/index/index' })
+          return
+        }
+        if (room.state === 2) {
+          // 房间已关闭，直接以只读模式继续
+          this.setData({ readOnly: true })
+        } else {
+          console.log('[room] auto-joining with code:', room.code)
+          const { ok, data } = await call('room', { action: 'join', code: room.code })
+          if (!ok) {
+            wx.switchTab({ url: '/pages/index/index' })
+            return
+          }
+          if (data && data.roomId && data.roomId !== this.data.id) {
+            this.setData({ id: data.roomId })
+          }
+        }
       }
       this._joined = true
     }
+
     this._startWatchers()
   },
 

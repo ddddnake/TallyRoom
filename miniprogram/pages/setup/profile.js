@@ -25,12 +25,11 @@ Page({
       app.clearProfileCache()
 
       // 检查是否有待加入的分享房间
-      const pendingCode = wx.getStorageSync('pending_share_code')
       const pendingRoom = wx.getStorageSync('pending_share_room')
-      if (pendingCode && pendingRoom) {
+      if (pendingRoom) {
         wx.removeStorageSync('pending_share_code')
         wx.removeStorageSync('pending_share_room')
-        wx.redirectTo({ url: '/pages/room/detail?id=' + pendingRoom + '&code=' + pendingCode })
+        wx.redirectTo({ url: '/pages/room/detail?id=' + pendingRoom + '&fromShare=1' })
         return
       }
 
