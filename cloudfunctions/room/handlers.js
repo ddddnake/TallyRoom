@@ -31,6 +31,7 @@ async function _sweepRoomIfStale(room, db) {
 }
 
 // 查询当前用户参与的进行中房间（已自动 sweep 过期的）
+// 顺带修复"成员 state=1 但房间已关闭"的幽灵记录
 async function _findMyActiveRoom(openid, db) {
   const memRes = await db.collection('room_members')
     .where({ userOpenid: openid, state: 1 })
@@ -38,7 +39,20 @@ async function _findMyActiveRoom(openid, db) {
   for (const m of memRes.data || []) {
     const roomRes = await db.collection('rooms').doc(m.roomId).get().catch(() => null)
     const room = roomRes && (Array.isArray(roomRes.data) ? roomRes.data[0] : roomRes.data)
-    if (!room || room.state !== 1) continue
+    if (!room) {
+      // 房间不存在，清理幽灵成员记录
+      await db.collection('room_members').doc(m._id).update({
+        data: { state: 2, leftAt: Date.now() }
+      }).catch(() => {})
+      continue
+    }
+    if (room.state !== 1) {
+      // 房间已关闭但我还显示在场，修正成员记录
+      await db.collection('room_members').doc(m._id).update({
+        data: { state: 2, leftAt: room.closedAt || Date.now() }
+      }).catch(() => {})
+      continue
+    }
     const closed = await _sweepRoomIfStale(room, db)
     if (!closed) return { room, member: m }
   }
@@ -178,18 +192,16 @@ async function join(event, openid, db) {
       return { ok: true, data: { roomId: room._id } }
     }
     // state === 2，复用记录重新加入
-    await db.runTransaction(async (tx) => {
-      await tx.collection('room_members').doc(member._id).update({
-        data: {
-          state: 1,
-          leftAt: null,
-          nickName,
-          avatarUrl
-        }
-      })
-      await tx.collection('rooms').doc(room._id).update({
-        data: { memberCount: room.memberCount + 1 }
-      })
+    await db.collection('room_members').doc(member._id).update({
+      data: {
+        state: 1,
+        leftAt: null,
+        nickName,
+        avatarUrl
+      }
+    })
+    await db.collection('rooms').doc(room._id).update({
+      data: { memberCount: (room.memberCount || 0) + 1 }
     })
     return { ok: true, data: { roomId: room._id } }
   }
@@ -291,52 +303,43 @@ async function leave(event, openid, db) {
   }
 
   const roomRes = await db.collection('rooms').doc(roomId).get()
-  const room = roomRes.data[0] || roomRes.data
+  const room = (Array.isArray(roomRes.data) ? roomRes.data[0] : roomRes.data) || {}
 
   const isOwner = room.ownerOpenid === openid
   const now = Date.now()
 
+  // 先把成员置为已退出（最关键，必须先成功）
+  await db.collection('room_members').doc(myMem.data[0]._id).update({
+    data: { state: 2, leftAt: now }
+  })
+
+  // 然后更新房间元数据：memberCount、可能的房主移交、可能的自动关闭
   if (!isOwner) {
-    // 普通成员直接退出
-    await db.runTransaction(async (tx) => {
-      await tx.collection('room_members').doc(myMem.data[0]._id).update({
-        data: { state: 2, leftAt: now }
-      })
-      await tx.collection('rooms').doc(roomId).update({
-        data: { memberCount: room.memberCount - 1 }
-      })
+    await db.collection('rooms').doc(roomId).update({
+      data: { memberCount: Math.max(0, (room.memberCount || 1) - 1) }
     })
     return { ok: true }
   }
 
-  // 房主：尝试移交
+  // 房主：找下一个接管者
   const allMembers = await db.collection('room_members').where({ roomId, state: 1 }).get()
-  const nextOwner = allMembers.data.find(m => m.userOpenid !== openid)
-
-  await db.runTransaction(async (tx) => {
-    await tx.collection('room_members').doc(myMem.data[0]._id).update({
-      data: { state: 2, leftAt: now }
+  const nextOwner = (allMembers.data || []).find(m => m.userOpenid !== openid)
+  if (nextOwner) {
+    await db.collection('rooms').doc(roomId).update({
+      data: {
+        ownerOpenid: nextOwner.userOpenid,
+        memberCount: Math.max(0, (room.memberCount || 1) - 1)
+      }
     })
-
-    if (nextOwner) {
-      await tx.collection('rooms').doc(roomId).update({
-        data: {
-          ownerOpenid: nextOwner.userOpenid,
-          memberCount: room.memberCount - 1
-        }
-      })
-    } else {
-      // 无人可移交，自动关闭
-      await tx.collection('rooms').doc(roomId).update({
-        data: {
-          state: 2,
-          closedAt: now,
-          memberCount: room.memberCount - 1
-        }
-      })
-    }
-  })
-
+  } else {
+    await db.collection('rooms').doc(roomId).update({
+      data: {
+        state: 2,
+        closedAt: now,
+        memberCount: 0
+      }
+    })
+  }
   return { ok: true }
 }
 
