@@ -17,6 +17,7 @@ Page({
       wx.redirectTo({ url: '/pages/setup/profile' })
       return
     }
+    this._myOpenid = profile._openid || profile._id
     const hours = new Date().getHours()
     const g = hours < 11 ? '早上好' : hours < 14 ? '中午好' : hours < 18 ? '下午好' : '晚上好'
     this.setData({ greeting: g + '，' + profile.nickName })
@@ -24,14 +25,19 @@ Page({
     // 检查是否在某进行中房间
     const db = wx.cloud.database()
     const myRooms = await db.collection('room_members')
-      .where({ _openid: '{openid}', state: 1 }).get()
+      .where({ userOpenid: this._myOpenid, state: 1 }).get()
     if (myRooms.data.length) {
       const roomRes = await db.collection('rooms')
         .where({ _id: myRooms.data[0].roomId, state: 1 }).get()
       if (roomRes.data.length) {
         this.setData({ statsSummary: '你有一个进行中的房间' })
+      } else {
+        this.setData({ statsSummary: '一起打牌，轻松记账' })
       }
+    } else {
+      this.setData({ statsSummary: '一起打牌，轻松记账' })
     }
+
     // 加载本月简要统计
     await this._loadStats()
   },
@@ -41,25 +47,36 @@ Page({
     const _ = db.command
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+    const myOpenid = this._myOpenid
+    if (!myOpenid) return
 
     try {
-      const res = await db.collection('room_orders').where({
-        createdAt: _.gte(monthStart)
+      // 本月我参与过的房间数（按 room_members joinedAt 算）
+      const myMemRes = await db.collection('room_members').where({
+        userOpenid: myOpenid,
+        joinedAt: _.gte(monthStart)
       }).get()
+      const totalGames = (myMemRes.data || []).length
+
+      // 本月我相关的订单（我作为付方或收方）→ 算净分
+      // 用 or 语义：我付的 + 我收的
+      const ordersRes = await db.collection('room_orders').where(
+        _.and([
+          { createdAt: _.gte(monthStart) },
+          _.or([
+            { fromOpenid: myOpenid },
+            { toOpenid: myOpenid }
+          ])
+        ])
+      ).get()
 
       let netScore = 0
-      const myOpenid = '{openid}'
-      ;(res.data || []).forEach(o => {
+      ;(ordersRes.data || []).forEach(o => {
         if (o.toOpenid === myOpenid) netScore += (o.amount || 0)
         if (o.fromOpenid === myOpenid) netScore -= (o.amount || 0)
       })
 
-      this.setData({
-        stats: {
-          totalGames: 0,
-          netScore
-        }
-      })
+      this.setData({ stats: { totalGames, netScore } })
     } catch (e) {
       console.error('stats load error', e)
     }

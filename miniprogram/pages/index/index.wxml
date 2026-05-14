@@ -10,7 +10,7 @@
     <view class="action-card" bindtap="onCreateRoom">
       <van-icon name="add-o" size="48rpx" color="#FF5032"/>
       <text class="action-title">创建房间</text>
-      <text class="action-desc">开一个新房间，邀请朋友加入</text>
+      <text class="action-desc">新开房间，邀请好友加入</text>
     </view>
 
     <view class="action-card" bindtap="onShowJoin">
