@@ -108,11 +108,14 @@ Page({
         onError: (e) => console.error('rooms watch error', e)
       }),
       db.collection('room_members').where({ roomId: this.data.id }).watch({
-        onChange: (snapshot) => {
+        onChange: async (snapshot) => {
           const members = snapshot.docs || []
           console.log('[watch members] type:', snapshot.type, 'count:', members.length,
                       'openids:', members.map(m => m.userOpenid + '(' + m.state + ')').join(','))
-          this.setData({ visibleMembers: members.filter(m => m.state === 1) })
+          const visible = members.filter(m => m.state === 1)
+          // 把 cloud:// 头像 URL 批量转换为 https 临时 URL
+          await this._resolveAvatars(visible)
+          this.setData({ visibleMembers: visible })
           this._recalc()
         },
         onError: (e) => console.error('members watch error', e)
@@ -132,6 +135,37 @@ Page({
     if (this._watchers) {
       this._watchers.forEach(w => w.close())
       this._watchers = null
+    }
+  },
+
+  // 把成员数组里 cloud:// 开头的头像 URL 批量转换为 https 临时 URL
+  async _resolveAvatars(members) {
+    if (!this._urlCache) this._urlCache = {}
+    const toResolve = []
+    members.forEach(m => {
+      if (m.avatarUrl && m.avatarUrl.startsWith('cloud://')) {
+        if (this._urlCache[m.avatarUrl]) {
+          m.avatarUrl = this._urlCache[m.avatarUrl]
+        } else {
+          toResolve.push(m.avatarUrl)
+        }
+      }
+    })
+    if (!toResolve.length) return
+    try {
+      const res = await wx.cloud.getTempFileURL({ fileList: toResolve })
+      const map = {}
+      ;(res.fileList || []).forEach(item => {
+        if (item.tempFileURL) {
+          map[item.fileID] = item.tempFileURL
+          this._urlCache[item.fileID] = item.tempFileURL
+        }
+      })
+      members.forEach(m => {
+        if (map[m.avatarUrl]) m.avatarUrl = map[m.avatarUrl]
+      })
+    } catch (e) {
+      console.error('getTempFileURL failed:', e)
     }
   },
 
