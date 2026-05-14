@@ -1,0 +1,22 @@
+<view class="setup-page">
+  <view class="setup-header">
+    <text class="setup-title">欢迎使用打牌记账</text>
+    <text class="setup-desc">先设置你的头像和昵称</text>
+  </view>
+
+  <view class="setup-avatar">
+    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <image class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" wx:if="{{avatarUrl}}"/>
+      <van-icon name="plus" size="48rpx" color="#ccc" wx:else/>
+    </button>
+    <text class="avatar-hint">点击选择头像</text>
+  </view>
+
+  <view class="setup-nickname">
+    <input class="nickname-input" type="nickname" placeholder="请输入昵称" value="{{nickName}}" bindinput="onNickInput"/>
+  </view>
+
+  <view class="setup-footer">
+    <van-button type="primary" block round color="#FF5032" bindtap="onSubmit" disabled="{{!avatarUrl || !nickName}}">完成</van-button>
+  </view>
+</view>
