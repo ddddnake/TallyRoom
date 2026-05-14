@@ -4,9 +4,23 @@
   min-height: 100vh;
 }
 
+.room-swipe {
+  margin-bottom: 16rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
 .room-item {
   display: flex; align-items: center; justify-content: space-between;
-  background: #fff; border-radius: 12rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx;
+  background: #fff; padding: 32rpx 24rpx;
+}
+
+.room-delete {
+  width: 128rpx; height: 100%;
+  background: #ff2a1f;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28rpx;
 }
 .room-info { flex: 1; min-width: 0; }
 .room-name-row {

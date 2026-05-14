@@ -32,6 +32,11 @@
     </view>
   </view>
 
+  <!-- 合规声明 -->
+  <view class="compliance-tip">
+    本应用仅供好友间娱乐记分使用，禁止用于任何违法行为。
+  </view>
+
   <!-- 加入房间弹层 -->
   <van-popup show="{{showJoin}}" bind:close="onCloseJoin" custom-style="background:none">
     <view class="join-popup">

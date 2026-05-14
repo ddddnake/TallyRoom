@@ -2,6 +2,8 @@ const { formatTime } = require('../../utils/format')
 const { call } = require('../../utils/cloud')
 const app = getApp()
 
+const HIDDEN_STORAGE_KEY = 'history_hidden_room_ids'
+
 function formatDuration(ms) {
   if (!ms || ms < 0) return '0m'
   const totalMin = Math.floor(ms / 60000)
@@ -10,6 +12,23 @@ function formatDuration(ms) {
   const m = totalMin % 60
   if (h === 0) return m + 'm'
   return h + 'h' + (m > 0 ? m + 'm' : '')
+}
+
+function getHiddenIds() {
+  try {
+    const raw = wx.getStorageSync(HIDDEN_STORAGE_KEY)
+    return Array.isArray(raw) ? raw : []
+  } catch (e) {
+    return []
+  }
+}
+
+function setHiddenIds(ids) {
+  try {
+    wx.setStorageSync(HIDDEN_STORAGE_KEY, ids)
+  } catch (e) {
+    console.error('save hidden ids failed', e)
+  }
 }
 
 Page({
@@ -64,7 +83,11 @@ Page({
       ordersByRoom[o.roomId].push(o)
     })
 
-    const rooms = (roomData.data || []).map(r => {
+    const hiddenSet = new Set(getHiddenIds())
+
+    const rooms = (roomData.data || [])
+      .filter(r => !hiddenSet.has(r._id))
+      .map(r => {
       const myMem = myMemberByRoom[r._id]
       const myJoinedAt = myMem ? (myMem.joinedAt || 0) : 0
       const orders = ordersByRoom[r._id] || []
@@ -112,5 +135,17 @@ Page({
     const { id, state } = e.currentTarget.dataset
     const readOnly = state === 2 ? '1' : '0'
     wx.navigateTo({ url: '/pages/room/detail?id=' + id + '&readOnly=' + readOnly })
+  },
+
+  onDeleteRoom(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    const hidden = getHiddenIds()
+    if (!hidden.includes(id)) hidden.push(id)
+    setHiddenIds(hidden)
+    // 从当前列表移除该项
+    this.setData({
+      rooms: this.data.rooms.filter(r => r._id !== id)
+    })
   }
 })

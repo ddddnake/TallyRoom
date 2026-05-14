@@ -27,6 +27,18 @@
 .stats-value.negative { color: #ffd700; }
 .stats-label { font-size: 24rpx; opacity: 0.85; display: block; margin-top: 8rpx; }
 
+/* 合规声明 */
+.compliance-tip {
+  margin-top: 48rpx;
+  padding: 20rpx 24rpx;
+  background: #fff8e6;
+  border-left: 4rpx solid #fa8c16;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  color: #8a5a00;
+  line-height: 1.6;
+}
+
 .join-popup {
   width: 520rpx; background: #fff; border-radius: 24rpx; padding: 60rpx 40rpx 40rpx;
 }

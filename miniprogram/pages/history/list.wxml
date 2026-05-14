@@ -1,20 +1,23 @@
 <view class="history-page">
   <van-empty wx:if="{{!rooms.length && !loading}}" description="还没有参与过房间" />
   <view class="room-list" wx:if="{{rooms.length}}">
-    <view class="room-item" wx:for="{{rooms}}" wx:key="_id" bindtap="onTapRoom" data-id="{{item._id}}" data-state="{{item.state}}">
-      <view class="room-info">
-        <view class="room-name-row">
-          <text class="room-name">{{item.name}}</text>
-          <text class="room-status status-{{item.statusType}}">{{item.statusLabel}}</text>
+    <van-swipe-cell wx:for="{{rooms}}" wx:key="_id" right-width="{{ 64 }}" class="room-swipe">
+      <view class="room-item" bindtap="onTapRoom" data-id="{{item._id}}" data-state="{{item.state}}">
+        <view class="room-info">
+          <view class="room-name-row">
+            <text class="room-name">{{item.name}}</text>
+            <text class="room-status status-{{item.statusType}}">{{item.statusLabel}}</text>
+          </view>
+          <view class="room-meta">
+            <text class="room-date">{{item.dateText}}</text>
+            <text class="room-duration">· {{item.durationText}}</text>
+          </view>
         </view>
-        <view class="room-meta">
-          <text class="room-date">{{item.dateText}}</text>
-          <text class="room-duration">· {{item.durationText}}</text>
+        <view class="room-score {{item.myScore >= 0 ? 'positive' : 'negative'}}">
+          {{item.myScoreText}}
         </view>
       </view>
-      <view class="room-score {{item.myScore >= 0 ? 'positive' : 'negative'}}">
-        {{item.myScoreText}}
-      </view>
-    </view>
+      <view slot="right" class="room-delete" catchtap="onDeleteRoom" data-id="{{item._id}}">删除</view>
+    </van-swipe-cell>
   </view>
 </view>
