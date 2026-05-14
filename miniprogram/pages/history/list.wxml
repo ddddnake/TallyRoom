@@ -3,7 +3,10 @@
   <view class="room-list" wx:if="{{rooms.length}}">
     <view class="room-item" wx:for="{{rooms}}" wx:key="_id" bindtap="onTapRoom" data-id="{{item._id}}" data-state="{{item.state}}">
       <view class="room-info">
-        <text class="room-name">{{item.name}}</text>
+        <view class="room-name-row">
+          <text class="room-name">{{item.name}}</text>
+          <text class="room-status status-{{item.statusType}}">{{item.statusLabel}}</text>
+        </view>
         <view class="room-meta">
           <text class="room-date">{{item.dateText}}</text>
           <text class="room-duration">· {{item.durationText}}</text>

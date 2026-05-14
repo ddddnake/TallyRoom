@@ -80,12 +80,28 @@ Page({
       })
 
       const durationMs = lastMyOrderAt && myJoinedAt ? (lastMyOrderAt - myJoinedAt) : 0
+
+      // 状态标签：房间已关闭 → "已结束"；房间在但我退了 → "已离开"；都活跃 → "进行中"
+      let statusLabel, statusType
+      if (r.state === 2) {
+        statusLabel = '已结束'
+        statusType = 'closed'
+      } else if (myMem && myMem.state !== 1) {
+        statusLabel = '已离开'
+        statusType = 'left'
+      } else {
+        statusLabel = '进行中'
+        statusType = 'active'
+      }
+
       return {
         ...r,
         dateText: r.createdAt ? formatTime(new Date(r.createdAt)) : '',
         durationText: formatDuration(durationMs),
         myScore,
-        myScoreText: (myScore >= 0 ? '+' : '') + myScore
+        myScoreText: (myScore >= 0 ? '+' : '') + myScore,
+        statusLabel,
+        statusType
       }
     }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
 

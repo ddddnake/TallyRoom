@@ -9,10 +9,21 @@
   background: #fff; border-radius: 12rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx;
 }
 .room-info { flex: 1; min-width: 0; }
-.room-name {
-  font-size: 30rpx; font-weight: 600; color: #333; display: block;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.room-name-row {
+  display: flex; align-items: center; gap: 12rpx;
 }
+.room-name {
+  font-size: 30rpx; font-weight: 600; color: #333;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex-shrink: 1; min-width: 0;
+}
+.room-status {
+  font-size: 22rpx; padding: 4rpx 12rpx; border-radius: 16rpx;
+  flex-shrink: 0; line-height: 1.4;
+}
+.status-active { background: #e8f7ee; color: #52c41a; }
+.status-left { background: #fff5e6; color: #fa8c16; }
+.status-closed { background: #f0f0f0; color: #999; }
 .room-meta {
   display: flex; align-items: center; gap: 8rpx;
   margin-top: 8rpx;
