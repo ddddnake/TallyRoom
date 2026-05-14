@@ -150,9 +150,10 @@ async function score(event, openid, db) {
     return { ok: false, code: NOT_MEMBER, message: '你不是该房间成员' }
   }
 
-  // 校验房间
+  // 校验房间（云端 doc().get() 返回 { data: 单对象 }，本地 mock 返回 { data: [对象] }，兼容两种）
   const roomRes = await db.collection('rooms').doc(roomId).get()
-  if (!roomRes.data.length || roomRes.data[0].state !== 1) {
+  const roomDoc = Array.isArray(roomRes.data) ? roomRes.data[0] : roomRes.data
+  if (!roomDoc || roomDoc.state !== 1) {
     return { ok: false, code: ROOM_CLOSED, message: '房间已关闭' }
   }
 

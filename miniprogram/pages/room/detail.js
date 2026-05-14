@@ -31,6 +31,7 @@ Page({
   async onShow() {
     // 拿当前用户 profile（顺便取 openid）
     const profile = await app.getProfile()
+    console.log('[room.onShow] profile:', profile, 'needsJoin:', this.data.needsJoin)
     if (!profile) {
       // 没设置过头像昵称：暂存当前房间，跳引导页
       if (this.data.needsJoin) {
@@ -39,30 +40,37 @@ Page({
       wx.redirectTo({ url: '/pages/setup/profile' })
       return
     }
-    if (profile._openid) this.setData({ myOpenid: profile._openid })
+    const myOpenid = profile._openid || profile._id
+    if (myOpenid) this.setData({ myOpenid })
 
     // 检查当前用户是否已是房间成员；不是则尝试加入
     if (!this._joined && !this.data.readOnly) {
       const db = wx.cloud.database()
       const memRes = await db.collection('room_members')
-        .where({ roomId: this.data.id, userOpenid: profile._openid, state: 1 })
+        .where({ roomId: this.data.id, userOpenid: myOpenid, state: 1 })
         .limit(1).get()
+
+      console.log('[room.onShow] my membership check:', memRes.data.length, 'records for', myOpenid)
 
       if (!memRes.data.length) {
         // 不是成员 → 查房间 code 然后 join
-        const roomRes = await db.collection('rooms').doc(this.data.id).get().catch(() => null)
-        const room = roomRes && roomRes.data
+        const roomRes = await db.collection('rooms').doc(this.data.id).get().catch(e => {
+          console.error('[room.onShow] get room failed:', e)
+          return null
+        })
+        const room = roomRes && (Array.isArray(roomRes.data) ? roomRes.data[0] : roomRes.data)
+        console.log('[room.onShow] fetched room:', room)
         if (!room) {
           wx.showToast({ title: '房间不存在', icon: 'none' })
           wx.switchTab({ url: '/pages/index/index' })
           return
         }
         if (room.state === 2) {
-          // 房间已关闭，直接以只读模式继续
           this.setData({ readOnly: true })
         } else {
-          console.log('[room] auto-joining with code:', room.code)
-          const { ok, data } = await call('room', { action: 'join', code: room.code })
+          console.log('[room.onShow] auto-joining with code:', room.code)
+          const { ok, data, code: errCode } = await call('room', { action: 'join', code: room.code })
+          console.log('[room.onShow] join result:', { ok, data, errCode })
           if (!ok) {
             wx.switchTab({ url: '/pages/index/index' })
             return
