@@ -28,7 +28,7 @@
       <!-- 邀请按钮 -->
       <view class="user-card invite-card" bindtap="onTapInvite">
         <view class="user-avatar invite-avatar">
-          <van-icon name="plus" size="56rpx" color="#FF5032"/>
+          <text class="invite-plus">+</text>
         </view>
         <view class="user-name">邀请好友</view>
         <view class="user-score" style="font-size:24rpx;color:#999">扫码 / 分享</view>
