@@ -1,0 +1,16 @@
+{
+  "miniprogramRoot": "miniprogram/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "cloudbaseRoot": "cloudfunctions/",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": false,
+    "checkSiteMap": false
+  },
+  "compileType": "miniprogram",
+  "appid": "YOUR_APPID_HERE",
+  "projectname": "tally-room"
+}

@@ -1,0 +1,10 @@
+page {
+  --color-primary: #ff5032;
+  --color-success: #52c41a;
+  --color-warning: #fa8c16;
+  --color-bg: #f5f5f5;
+  --color-card: #ffffff;
+  --color-text: #333333;
+  --color-text-secondary: #999999;
+  box-sizing: border-box;
+}
