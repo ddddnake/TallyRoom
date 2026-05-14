@@ -185,4 +185,82 @@ async function score(event, openid, db) {
   return { ok: true, data: { count: entries.length } }
 }
 
-module.exports = { create, join, score }
+async function leave(event, openid, db) {
+  const { roomId } = event
+  const { NOT_MEMBER } = require('./lib/codes')
+
+  // 校验是成员
+  const myMem = await db.collection('room_members').where({ roomId, userOpenid: openid, state: 1 }).get()
+  if (!myMem.data.length) {
+    return { ok: false, code: NOT_MEMBER, message: '你不是该房间成员' }
+  }
+
+  const roomRes = await db.collection('rooms').doc(roomId).get()
+  const room = roomRes.data[0] || roomRes.data
+
+  const isOwner = room.ownerOpenid === openid
+  const now = Date.now()
+
+  if (!isOwner) {
+    // 普通成员直接退出
+    await db.runTransaction(async (tx) => {
+      await tx.collection('room_members').doc(myMem.data[0]._id).update({
+        data: { state: 2, leftAt: now }
+      })
+      await tx.collection('rooms').doc(roomId).update({
+        data: { memberCount: room.memberCount - 1 }
+      })
+    })
+    return { ok: true }
+  }
+
+  // 房主：尝试移交
+  const allMembers = await db.collection('room_members').where({ roomId, state: 1 }).get()
+  const nextOwner = allMembers.data.find(m => m.userOpenid !== openid)
+
+  await db.runTransaction(async (tx) => {
+    await tx.collection('room_members').doc(myMem.data[0]._id).update({
+      data: { state: 2, leftAt: now }
+    })
+
+    if (nextOwner) {
+      await tx.collection('rooms').doc(roomId).update({
+        data: {
+          ownerOpenid: nextOwner.userOpenid,
+          memberCount: room.memberCount - 1
+        }
+      })
+    } else {
+      // 无人可移交，自动关闭
+      await tx.collection('rooms').doc(roomId).update({
+        data: {
+          state: 2,
+          closedAt: now,
+          memberCount: room.memberCount - 1
+        }
+      })
+    }
+  })
+
+  return { ok: true }
+}
+
+async function close(event, openid, db) {
+  const { roomId } = event
+  const { NOT_OWNER } = require('./lib/codes')
+
+  const roomRes = await db.collection('rooms').doc(roomId).get()
+  const room = roomRes.data[0] || roomRes.data
+
+  if (room.ownerOpenid !== openid) {
+    return { ok: false, code: NOT_OWNER, message: '仅房主可以关闭房间' }
+  }
+
+  await db.collection('rooms').doc(roomId).update({
+    data: { state: 2, closedAt: Date.now() }
+  })
+
+  return { ok: true }
+}
+
+module.exports = { create, join, score, leave, close }

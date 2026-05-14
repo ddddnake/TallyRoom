@@ -53,7 +53,7 @@ describe('create', () => {
   })
 })
 
-const { score } = require('./handlers')
+const { leave, close, score } = require('./handlers')
 
 describe('score', () => {
   test('提交计分成功（付A→收B 50，茶水 10）', async () => {
@@ -194,5 +194,82 @@ describe('join', () => {
     const result = await join({ code: roomRes.data.code }, 'b_openid', db)
     expect(result.ok).toBe(false)
     expect(result.code).toBe('ROOM_CLOSED')
+  })
+})
+
+describe('leave', () => {
+  test('普通成员退出成功', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert({ _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'x' })
+    const roomId = await setupRoom(db, 'a_openid')
+    await addMember(db, roomId, 'b_openid', 'B')
+
+    const result = await leave({ roomId }, 'b_openid', db)
+    expect(result.ok).toBe(true)
+
+    // 成员 state 变为 2
+    const memRes = await db.collection('room_members').where({ roomId, userOpenid: 'b_openid' }).get()
+    expect(memRes.data[0].state).toBe(2)
+
+    // memberCount 减 1
+    const roomRes = await db.collection('rooms').doc(roomId).get()
+    expect(roomRes.data[0].memberCount).toBe(1)
+  })
+
+  test('房主退出，移交下一成员', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert({ _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'x' })
+    const roomId = await setupRoom(db, 'a_openid')
+    await addMember(db, roomId, 'b_openid', 'B')
+
+    const result = await leave({ roomId }, 'a_openid', db)
+    expect(result.ok).toBe(true)
+
+    // ownership 移交到 B
+    const roomRes = await db.collection('rooms').doc(roomId).get()
+    expect(roomRes.data[0].ownerOpenid).toBe('b_openid')
+  })
+
+  test('房主退出，无其他成员，自动关闭', async () => {
+    const db = setupDB()
+    const roomId = await setupRoom(db, 'a_openid')
+
+    const result = await leave({ roomId }, 'a_openid', db)
+    expect(result.ok).toBe(true)
+
+    const roomRes = await db.collection('rooms').doc(roomId).get()
+    expect(roomRes.data[0].state).toBe(2)
+  })
+
+  test('非成员不能退出', async () => {
+    const db = setupDB()
+    const roomId = await setupRoom(db, 'a_openid')
+    const result = await leave({ roomId }, 'stranger', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('NOT_MEMBER')
+  })
+})
+
+describe('close', () => {
+  test('房主关闭房间成功', async () => {
+    const db = setupDB()
+    const roomId = await setupRoom(db, 'a_openid')
+
+    const result = await close({ roomId }, 'a_openid', db)
+    expect(result.ok).toBe(true)
+
+    const roomRes = await db.collection('rooms').doc(roomId).get()
+    expect(roomRes.data[0].state).toBe(2)
+  })
+
+  test('非房主不能关闭', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert({ _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'x' })
+    const roomId = await setupRoom(db, 'a_openid')
+    await addMember(db, roomId, 'b_openid', 'B')
+
+    const result = await close({ roomId }, 'b_openid', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('NOT_OWNER')
   })
 })
