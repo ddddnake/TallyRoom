@@ -127,3 +127,45 @@
   font-size: 22rpx; color: #aaa; line-height: 1.5;
   text-align: center;
 }
+
+/* 邀请好友弹层 */
+.invite-popup {
+  width: 600rpx; background: #fff; border-radius: 24rpx;
+  padding: 40rpx 40rpx 32rpx;
+}
+.invite-title {
+  font-size: 32rpx; font-weight: 600; text-align: center; margin-bottom: 32rpx;
+}
+.invite-qrcode-wrap {
+  width: 360rpx; height: 360rpx; margin: 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  background: #f7f7f7; border-radius: 16rpx;
+}
+.invite-qrcode { width: 320rpx; height: 320rpx; }
+.invite-qrcode-loading { font-size: 24rpx; color: #999; }
+.invite-code-row {
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 32rpx; gap: 16rpx;
+}
+.invite-code-label { font-size: 26rpx; color: #999; }
+.invite-code-value {
+  font-size: 36rpx; font-weight: 700; color: #333; letter-spacing: 6rpx;
+}
+.invite-code-copy {
+  font-size: 24rpx; color: #FF5032; padding: 8rpx 16rpx;
+  border: 2rpx solid #FF5032; border-radius: 32rpx;
+}
+.invite-actions {
+  display: flex; gap: 24rpx; margin-top: 32rpx;
+}
+.invite-share-btn {
+  flex: 1; height: 80rpx; line-height: 80rpx;
+  background: #FF5032; color: #fff; border-radius: 40rpx;
+  font-size: 28rpx; font-weight: 600;
+}
+.invite-share-btn::after { border: none; }
+.invite-close-btn {
+  flex: 1; height: 80rpx; line-height: 80rpx;
+  border: 2rpx solid #eee; border-radius: 40rpx;
+  font-size: 28rpx; text-align: center; color: #666;
+}

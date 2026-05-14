@@ -79,8 +79,39 @@ Page({
     this.setData({ code: e.detail.value.toUpperCase() })
   },
 
+  async onScanJoin() {
+    wx.scanCode({
+      onlyFromCamera: false,
+      scanType: ['qrCode'],
+      success: async (res) => {
+        const scanned = (res.result || '').trim()
+        // 扫小程序码：res.path 形如 "pages/room/detail?scene=AB3X9K"
+        // 扫普通码：res.result 可能是邀请码本身
+        let code = ''
+        if (res.path) {
+          const m = res.path.match(/scene=([A-Z0-9]+)/i)
+          if (m) code = decodeURIComponent(m[1]).toUpperCase()
+        }
+        if (!code && /^[A-Z0-9]{6}$/i.test(scanned)) {
+          code = scanned.toUpperCase()
+        }
+        if (!code) {
+          wx.showToast({ title: '不是有效的房间码', icon: 'none' })
+          return
+        }
+        this.setData({ code })
+        await this._doJoin(code)
+      },
+      fail: () => { /* 用户取消，无需提示 */ }
+    })
+  },
+
   async onJoin() {
-    const { ok, data } = await call('room', { action: 'join', code: this.data.code })
+    await this._doJoin(this.data.code)
+  },
+
+  async _doJoin(code) {
+    const { ok, data } = await call('room', { action: 'join', code })
     if (ok) {
       this.setData({ showJoin: false })
       wx.navigateTo({ url: '/pages/room/detail?id=' + data.roomId })

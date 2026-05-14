@@ -22,32 +22,56 @@ Page({
     showProfileEditor: false,
     editAvatarDisplay: '',
     editAvatarLocal: '',
-    editNickName: ''
+    editNickName: '',
+    showInvite: false,
+    inviteQrUrl: '',
+    inviteQrError: ''
   },
 
   onLoad(options) {
+    // 从小程序码进入：options.scene = 邀请码（如 "AB3X9K"）
+    // 从分享卡进入：options.id = 房间 id, options.code = 邀请码
+    const scene = options.scene ? decodeURIComponent(options.scene) : ''
     this.setData({
-      id: options.id,
+      id: options.id || '',
       readOnly: options.readOnly === '1',
-      // 是否需要尝试加入：来自分享（带 code）或外部跳转（带 fromShare）
-      needsJoin: !!(options.code || options.fromShare)
+      pendingJoinCode: scene || options.code || '',
+      needsJoin: !!(scene || options.code || options.fromShare)
     })
   },
 
   async onShow() {
     // 拿当前用户 profile（顺便取 openid）
     const profile = await app.getProfile()
-    console.log('[room.onShow] profile:', profile, 'needsJoin:', this.data.needsJoin)
+    console.log('[room.onShow] profile:', profile, 'needsJoin:', this.data.needsJoin, 'id:', this.data.id, 'pendingJoinCode:', this.data.pendingJoinCode)
     if (!profile) {
       // 没设置过头像昵称：暂存当前房间，跳引导页
       if (this.data.needsJoin) {
-        wx.setStorageSync('pending_share_room', this.data.id)
+        if (this.data.id) wx.setStorageSync('pending_share_room', this.data.id)
+        if (this.data.pendingJoinCode) wx.setStorageSync('pending_share_code', this.data.pendingJoinCode)
       }
       wx.redirectTo({ url: '/pages/setup/profile' })
       return
     }
     const myOpenid = profile._openid || profile._id
     if (myOpenid) this.setData({ myOpenid })
+
+    // 扫小程序码进入：只有邀请码没有 roomId，先 join 拿到 roomId
+    if (!this.data.id && this.data.pendingJoinCode) {
+      const { ok, data } = await call('room', { action: 'join', code: this.data.pendingJoinCode })
+      if (!ok || !data || !data.roomId) {
+        wx.switchTab({ url: '/pages/index/index' })
+        return
+      }
+      this.setData({ id: data.roomId })
+      this._joined = true
+    }
+
+    // 没有 roomId 且没有 join code：异常，回首页
+    if (!this.data.id) {
+      wx.switchTab({ url: '/pages/index/index' })
+      return
+    }
 
     // 检查当前用户是否已是房间成员；不是则尝试加入
     if (!this._joined && !this.data.readOnly) {
@@ -321,6 +345,50 @@ Page({
     if (ok) {
       this.setData({ showQuickScore: false })
     }
+  },
+
+  // 邀请：弹层 + 异步生成小程序码
+  async onTapInvite() {
+    this.setData({ showInvite: true, inviteQrError: '' })
+    if (this._inviteQrUrlCache) {
+      this.setData({ inviteQrUrl: this._inviteQrUrlCache })
+      return
+    }
+    if (!this.data.info || !this.data.info.code) {
+      this.setData({ inviteQrError: '房间数据加载中，请稍候再试' })
+      return
+    }
+    try {
+      const { ok, data, code } = await call('code', {
+        roomId: this.data.id,
+        code: this.data.info.code
+      })
+      if (!ok) {
+        this.setData({ inviteQrError: code === 'GENERATE_FAILED' ? '生成失败，请稍后重试' : '生成失败' })
+        return
+      }
+      // fileID → https 临时 URL
+      const urlRes = await wx.cloud.getTempFileURL({ fileList: [data.fileID] })
+      const tempUrl = urlRes.fileList && urlRes.fileList[0] && urlRes.fileList[0].tempFileURL
+      if (tempUrl) {
+        this._inviteQrUrlCache = tempUrl
+        this.setData({ inviteQrUrl: tempUrl })
+      } else {
+        this.setData({ inviteQrError: '二维码读取失败' })
+      }
+    } catch (e) {
+      console.error('invite qr generate failed', e)
+      this.setData({ inviteQrError: '生成失败，请稍后重试' })
+    }
+  },
+
+  onCloseInvite() {
+    this.setData({ showInvite: false })
+  },
+
+  onCopyCode() {
+    if (!this.data.info || !this.data.info.code) return
+    wx.setClipboardData({ data: this.data.info.code })
   },
 
   async onLeave() {

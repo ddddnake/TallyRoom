@@ -26,13 +26,13 @@
       </view>
 
       <!-- 邀请按钮 -->
-      <button class="user-card invite-card" open-type="share">
+      <view class="user-card invite-card" bindtap="onTapInvite">
         <view class="user-avatar invite-avatar">
           <image src="../../images/invite.png" mode="widthFix" style="width:100%;height:100%"/>
         </view>
         <view class="user-name">邀请好友</view>
-        <view class="user-score" style="font-size:24rpx;color:#999">点击分享</view>
-      </button>
+        <view class="user-score" style="font-size:24rpx;color:#999">扫码 / 分享</view>
+      </view>
     </scroll-view>
   </view>
 
@@ -89,6 +89,29 @@
         <van-button type="primary" round color="#FF5032" bindtap="onSaveProfile">保存</van-button>
       </view>
       <view class="profile-editor-tip">说明：修改后，本房间内已有的记录依然显示原昵称，新房间和新计分会用新昵称。</view>
+    </view>
+  </van-popup>
+
+  <!-- 邀请好友弹层 -->
+  <van-popup show="{{showInvite}}" bind:close="onCloseInvite" custom-style="background:none">
+    <view class="invite-popup">
+      <view class="invite-title">邀请好友加入</view>
+      <view class="invite-qrcode-wrap">
+        <image wx:if="{{inviteQrUrl}}" class="invite-qrcode" src="{{inviteQrUrl}}" mode="aspectFit"/>
+        <view wx:else class="invite-qrcode-loading">
+          <van-loading wx:if="{{!inviteQrError}}" size="48rpx" />
+          <text wx:if="{{inviteQrError}}">{{inviteQrError}}</text>
+        </view>
+      </view>
+      <view class="invite-code-row">
+        <text class="invite-code-label">房间码</text>
+        <text class="invite-code-value" selectable>{{info.code}}</text>
+        <view class="invite-code-copy" bindtap="onCopyCode">复制</view>
+      </view>
+      <view class="invite-actions">
+        <button class="invite-share-btn" open-type="share">微信分享</button>
+        <view class="invite-close-btn" bindtap="onCloseInvite">关闭</view>
+      </view>
     </view>
   </van-popup>
 </view>

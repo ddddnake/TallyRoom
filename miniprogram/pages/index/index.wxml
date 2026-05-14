@@ -16,7 +16,7 @@
     <view class="action-card" bindtap="onShowJoin">
       <van-icon name="friends-o" size="48rpx" color="#FF5032"/>
       <text class="action-title">加入房间</text>
-      <text class="action-desc">输入好友分享的邀请码</text>
+      <text class="action-desc">扫码或输入邀请码</text>
     </view>
   </view>
 
@@ -35,8 +35,17 @@
   <!-- 加入房间弹层 -->
   <van-popup show="{{showJoin}}" bind:close="onCloseJoin" custom-style="background:none">
     <view class="join-popup">
-      <view class="join-title">输入邀请码</view>
-      <input class="join-input" placeholder="6位邀请码" maxlength="6" value="{{code}}" bindinput="onCodeInput"/>
+      <view class="join-title">加入房间</view>
+
+      <view class="join-scan-btn" bindtap="onScanJoin">
+        <van-icon name="scan" size="56rpx" color="#FF5032"/>
+        <text class="join-scan-text">扫码加入</text>
+      </view>
+
+      <view class="join-divider"><text>或</text></view>
+
+      <view class="join-manual-label">手动输入 6 位邀请码</view>
+      <input class="join-input" placeholder="如 AB3X9K" maxlength="6" value="{{code}}" bindinput="onCodeInput"/>
       <van-button type="primary" block round color="#FF5032" bindtap="onJoin" disabled="{{code.length !== 6}}">加入</van-button>
     </view>
     <view class="join-close" bindtap="onCloseJoin">
