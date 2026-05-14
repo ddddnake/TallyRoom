@@ -8,9 +8,10 @@
           <view class="user-avatar">
             <image class="user-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill"/>
           </view>
-          <view wx:if="{{info.ownerOpenid === item.userOpenid}}" class="owner-tag">房主</view>
         </view>
-        <view class="user-name">{{item.nickName}}</view>
+        <view class="user-name">
+          <text wx:if="{{info.ownerOpenid === item.userOpenid}}" class="owner-crown">👑</text>{{item.nickName}}
+        </view>
         <view class="user-score {{aggregated[item.userOpenid] >= 0 ? 'positive' : 'negative'}}">
           {{aggregated[item.userOpenid] >= 0 ? '+' : ''}}{{aggregated[item.userOpenid] || 0}}
         </view>
