@@ -83,6 +83,13 @@ class Collection {
             return { data: matched.slice(0, n) }
           }
         }
+      },
+      remove: async () => {
+        const before = this._records.length
+        this._records = records.filter(r => {
+          return !Object.entries(query).every(([k, v]) => r[k] === v)
+        })
+        return { stats: { removed: before - this._records.length } }
       }
     }
   }

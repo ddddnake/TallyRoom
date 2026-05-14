@@ -9,19 +9,33 @@ async function create(event, openid, db, { generateCode }) {
 
   const nickName = profileRes.data[0].nickName
   const roomName = event.name || nickName + '的房间'
-
-  // 生成不重复邀请码
-  let code
-  for (let i = 0; i < 5; i++) {
-    code = generateCode()
-    const existRes = await db.collection('rooms').where({ code }).get()
-    if (!existRes.data.length) break
-  }
-  if (!code) return { ok: false, code: 'CODE_GENERATION_FAILED' }
-
   const now = Date.now()
 
-  // 先创建房间
+  // 生成不重复邀请码（内联实现，避免依赖外部模块的兼容问题）
+  const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  function makeCode() {
+    let s = ''
+    for (let i = 0; i < 6; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)]
+    return s
+  }
+
+  let code
+  for (let attempt = 0; attempt < 10; attempt++) {
+    code = makeCode()
+    // 确保 code 是有效字符串
+    if (!code || code.length !== 6) continue
+    const existRes = await db.collection('rooms').where({ code }).get()
+    if (!existRes.data.length) break
+    code = null
+  }
+  if (!code || code.length !== 6) {
+    return { ok: false, code: 'CODE_GENERATION_FAILED', message: '邀请码生成失败' }
+  }
+
+  // 先删除之前可能产生的 code=null 脏数据（如果有）
+  await db.collection('rooms').where({ code: null }).remove().catch(() => {})
+
+  // 创建房间
   const roomAdd = await db.collection('rooms').add({
     data: {
       code,
@@ -34,7 +48,7 @@ async function create(event, openid, db, { generateCode }) {
     }
   })
 
-  // 再添加房主为成员
+  // 添加房主为成员
   await db.collection('room_members').add({
     data: {
       roomId: roomAdd._id,

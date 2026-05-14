@@ -29,6 +29,13 @@ class Collection {
     this._nextId = Math.max(0, ...records.map(r => r._id || 0)) + 1
   }
 
+  _insert(record) {
+    const rec = { ...record }
+    if (!rec._id) rec._id = String(this._nextId++)
+    this._records.push(rec)
+    return rec
+  }
+
   doc(id) {
     const rec = this._records.find(r => r._id === id)
     return {
@@ -76,6 +83,13 @@ class Collection {
             return { data: matched.slice(0, n) }
           }
         }
+      },
+      remove: async () => {
+        const before = this._records.length
+        this._records = records.filter(r => {
+          return !Object.entries(query).every(([k, v]) => r[k] === v)
+        })
+        return { stats: { removed: before - this._records.length } }
       }
     }
   }
