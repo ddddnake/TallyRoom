@@ -8,6 +8,14 @@ Page({
     submitting: false
   },
 
+  async onShow() {
+    // 已设置过 profile 的用户不应停留在引导页
+    const profile = await app.getProfile()
+    if (profile) {
+      wx.switchTab({ url: '/pages/index/index' })
+    }
+  },
+
   onChooseAvatar(e) {
     this.setData({ avatarUrl: e.detail.avatarUrl })
   },
