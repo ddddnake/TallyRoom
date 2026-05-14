@@ -140,12 +140,24 @@ Page({
   onDeleteRoom(e) {
     const id = e.currentTarget.dataset.id
     if (!id) return
-    const hidden = getHiddenIds()
-    if (!hidden.includes(id)) hidden.push(id)
-    setHiddenIds(hidden)
-    // 从当前列表移除该项
-    this.setData({
-      rooms: this.data.rooms.filter(r => r._id !== id)
+    const room = this.data.rooms.find(r => r._id === id)
+    const roomName = room ? room.name : '该房间'
+
+    wx.showModal({
+      title: '删除记录',
+      content: '确定删除「' + roomName + '」吗？\n（仅在你这里隐藏，不影响其他人）',
+      confirmText: '删除',
+      confirmColor: '#ff2a1f',
+      cancelText: '取消',
+      success: (res) => {
+        if (!res.confirm) return
+        const hidden = getHiddenIds()
+        if (!hidden.includes(id)) hidden.push(id)
+        setHiddenIds(hidden)
+        this.setData({
+          rooms: this.data.rooms.filter(r => r._id !== id)
+        })
+      }
     })
   }
 })
