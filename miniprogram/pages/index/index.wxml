@@ -16,7 +16,7 @@
     <view class="action-card" bindtap="onShowJoin">
       <van-icon name="friends-o" size="48rpx" color="#FF5032"/>
       <text class="action-title">加入房间</text>
-      <text class="action-desc">扫码或输入邀请码</text>
+      <text class="action-desc">输入好友的房间码</text>
     </view>
   </view>
 
