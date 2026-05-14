@@ -1,8 +1,13 @@
 const { NO_PROFILE, ROOM_NOT_FOUND, ROOM_CLOSED } = require('./lib/codes')
 
 async function create(event, openid, db, { generateCode }) {
-  // 查 profile（用 where 而非 doc().get()，避免云数据库 doc() 对刚创建文档返回空的问题）
-  const profileRes = await db.collection('profiles').where({ _openid: openid }).limit(1).get()
+  // 查 profile：先按 _id 查（我们 upsertProfile 时把 _id 设成了 openid）
+  // 再按 _openid 查作为兜底
+  let profileRes = await db.collection('profiles').where({ _id: openid }).limit(1).get().catch(() => ({ data: [] }))
+  if (!profileRes.data || !profileRes.data.length) {
+    profileRes = await db.collection('profiles').where({ _openid: openid }).limit(1).get().catch(() => ({ data: [] }))
+  }
+  console.log('[create] openid:', openid, 'profile found:', profileRes.data && profileRes.data.length)
   if (!profileRes.data || !profileRes.data.length) {
     return { ok: false, code: NO_PROFILE, message: '请先设置头像和昵称' }
   }
@@ -79,7 +84,10 @@ async function join(event, openid, db) {
   }
 
   // 查 profile（获取最新昵称头像做快照）
-  const profileRes = await db.collection('profiles').where({ _openid: openid }).limit(1).get()
+  let profileRes = await db.collection('profiles').where({ _id: openid }).limit(1).get().catch(() => ({ data: [] }))
+  if (!profileRes.data || !profileRes.data.length) {
+    profileRes = await db.collection('profiles').where({ _openid: openid }).limit(1).get().catch(() => ({ data: [] }))
+  }
   const nickName = profileRes.data && profileRes.data.length ? profileRes.data[0].nickName : '新成员'
   const avatarUrl = profileRes.data && profileRes.data.length ? profileRes.data[0].avatarUrl : ''
 
