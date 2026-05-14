@@ -39,27 +39,23 @@ async function create(event, openid, db, { generateCode }) {
   const roomId = 'room_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8)
 
   await db.collection('rooms').doc(roomId).set({
-    data: {
-      code,
-      name: roomName,
-      state: 1,
-      ownerOpenid: openid,
-      _openid: openid,
-      memberCount: 1,
-      createdAt: now
-    }
+    code,
+    name: roomName,
+    state: 1,
+    ownerOpenid: openid,
+    _openid: openid,
+    memberCount: 1,
+    createdAt: now
   })
 
   // 添加房主为成员
   await db.collection('room_members').add({
-    data: {
-      roomId,
-      userOpenid: openid,
-      nickName,
-      avatarUrl: profileRes.data[0].avatarUrl,
-      state: 1,
-      joinedAt: now
-    }
+    roomId,
+    userOpenid: openid,
+    nickName,
+    avatarUrl: profileRes.data[0].avatarUrl,
+    state: 1,
+    joinedAt: now
   })
 
   return { ok: true, data: { roomId, code } }
@@ -112,14 +108,12 @@ async function join(event, openid, db) {
   // 新成员
   const now = Date.now()
   await db.collection('room_members').add({
-    data: {
-      roomId: room._id,
-      userOpenid: openid,
-      nickName,
-      avatarUrl,
-      state: 1,
-      joinedAt: now
-    }
+    roomId: room._id,
+    userOpenid: openid,
+    nickName,
+    avatarUrl,
+    state: 1,
+    joinedAt: now
   })
   await db.collection('rooms').doc(room._id).update({
     data: { memberCount: room.memberCount + 1 }
@@ -179,15 +173,13 @@ async function score(event, openid, db) {
       toNickSnap = memberMap[e.toOpenid].nickName
     }
     await db.collection('room_orders').add({
-      data: {
-        roomId,
-        fromOpenid: openid,
-        toOpenid: e.toOpenid || '',
-        amount: e.amount,
-        fromNickSnap,
-        toNickSnap,
-        createdAt: now
-      }
+      roomId,
+      fromOpenid: openid,
+      toOpenid: e.toOpenid || '',
+      amount: e.amount,
+      fromNickSnap,
+      toNickSnap,
+      createdAt: now
     })
   }
 

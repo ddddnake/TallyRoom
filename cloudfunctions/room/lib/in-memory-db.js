@@ -43,17 +43,18 @@ class Collection {
         if (!rec) throw new Error(`doc ${id} not found in ${this.name}`)
         return { data: [rec] }
       },
-      update: async ({ data }) => {
+      update: async (params) => {
         if (!rec) throw new Error(`doc ${id} not found in ${this.name}`)
-        Object.assign(rec, data)
+        Object.assign(rec, params.data || params)
         return { stats: { updated: 1 } }
       },
-      set: async ({ data }) => {
+      set: async (params) => {
+        const docData = params.data || params
         const idx = this._records.findIndex(r => r._id === id)
         if (idx >= 0) {
-          Object.assign(this._records[idx], data)
+          Object.assign(this._records[idx], docData)
         } else {
-          this._records.push({ _id: id, ...data })
+          this._records.push({ _id: id, ...docData })
         }
         return { stats: { updated: 1 } }
       }
@@ -103,8 +104,9 @@ class Collection {
     }
   }
 
-  add({ data }) {
-    const rec = { _id: String(this._nextId++), ...data }
+  add(params) {
+    const docData = params.data || params
+    const rec = { _id: String(this._nextId++), ...docData }
     this._records.push(rec)
     return { _id: rec._id }
   }
