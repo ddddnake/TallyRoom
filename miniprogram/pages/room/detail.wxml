@@ -2,7 +2,8 @@
   <!-- 成员横滚 -->
   <view class="users">
     <scroll-view class="users-scroll" scroll-x enable-flex>
-      <view class="user-card" wx:for="{{visibleMembers}}" wx:key="userOpenid">
+      <view class="user-card" wx:for="{{visibleMembers}}" wx:key="userOpenid"
+            bindtap="onTapMember" data-openid="{{item.userOpenid}}" data-name="{{item.nickName}}">
         <view class="user-avatar" style="background-image:url({{item.avatarUrl}})">
           <van-tag wx:if="{{info.ownerOpenid === item.userOpenid}}" class="owner-tag" type="primary" round color="#f2826a">房主</van-tag>
         </view>
@@ -12,8 +13,8 @@
         </view>
       </view>
 
-      <!-- 茶水虚拟卡片 -->
-      <view class="user-card tea-card">
+      <!-- 茶水虚拟卡片：点击直接给茶水加分 -->
+      <view class="user-card tea-card" bindtap="onTapTea">
         <view class="user-avatar tea-avatar">
           <image src="../../images/tea.png" mode="widthFix" style="width:100%;height:100%"/>
         </view>
@@ -32,6 +33,11 @@
     </scroll-view>
   </view>
 
+  <!-- 操作提示 -->
+  <view class="action-hint" wx:if="{{!readOnly && info.state === 1}}">
+    点击成员头像给 ta 转账，点击茶水图标记茶水费
+  </view>
+
   <!-- 消息流 -->
   <scroll-view class="msg-scroll" scroll-y="{{true}}" scroll-into-view="{{lastMsgId}}">
     <view class="msg-item" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
@@ -43,7 +49,6 @@
 
   <!-- 底部操作栏 -->
   <view class="footer" wx:if="{{!readOnly && info.state === 1}}">
-    <view class="footer-btn" bindtap="onShowScore">支出</view>
     <view class="footer-btn" bindtap="onLeave">退出</view>
     <view class="footer-btn" wx:if="{{info.ownerOpenid === myOpenid}}" bindtap="onCloseRoom">关闭房间</view>
   </view>
@@ -53,22 +58,16 @@
     <text>房间 {{info.state === 2 ? '已关闭' : '只读'}}</text>
   </view>
 
-  <!-- 计分弹层 -->
-  <van-popup show="{{showScorePopup}}" bind:close="onCloseScore" custom-style="background:none">
-    <view class="score-popup">
-      <view class="score-hint">填写你赢得的分数（给每个对手）</view>
-      <view class="score-item" wx:for="{{visibleMembers}}" wx:key="userOpenid" wx:if="{{item.userOpenid !== myOpenid}}">
-        <text class="score-name">{{item.nickName}}</text>
-        <input class="score-input" type="number" placeholder="分数" value="{{scoreForm[item.userOpenid]}}" data-key="{{item.userOpenid}}" bindinput="onScoreInput"/>
+  <!-- 快速计分弹层 -->
+  <van-popup show="{{showQuickScore}}" bind:close="onCloseQuickScore" custom-style="background:none">
+    <view class="quick-score-popup">
+      <view class="quick-score-title">{{quickTargetName}}</view>
+      <view class="quick-score-hint">输入你转给 ta 的分数</view>
+      <input class="quick-score-input" type="number" placeholder="分数" value="{{quickAmount}}" bindinput="onQuickInput" focus="{{showQuickScore}}"/>
+      <view class="quick-score-actions">
+        <van-button plain round bindtap="onCloseQuickScore">取消</van-button>
+        <van-button type="primary" round color="#FF5032" bindtap="onSubmitQuickScore">确定</van-button>
       </view>
-      <view class="score-item">
-        <text class="score-name">茶水</text>
-        <input class="score-input" type="number" placeholder="赢的一方操作" value="{{scoreForm._tea}}" data-key="_tea" bindinput="onScoreInput"/>
-      </view>
-      <van-button type="primary" block round color="#FF5032" bindtap="onSubmitScore">确定</van-button>
-    </view>
-    <view class="score-close" bindtap="onCloseScore">
-      <van-icon name="clear" color="#fff" size="48rpx"/>
     </view>
   </van-popup>
 </view>

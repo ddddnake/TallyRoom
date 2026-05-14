@@ -14,8 +14,10 @@ Page({
     aggregated: {},
     teaTotal: 0,
     messages: [],
-    showScorePopup: false,
-    scoreForm: {},
+    showQuickScore: false,
+    quickTargetOpenid: '',
+    quickTargetName: '',
+    quickAmount: '',
     lastMsgId: ''
   },
 
@@ -146,42 +148,54 @@ Page({
     })
   },
 
-  onShowScore() {
-    this.setData({ showScorePopup: true, scoreForm: {} })
-  },
-
-  onCloseScore() {
-    this.setData({ showScorePopup: false })
-  },
-
-  onScoreInput(e) {
-    const key = e.currentTarget.dataset.key
-    this.setData({ ['scoreForm.' + key]: e.detail.value })
-  },
-
-  async onSubmitScore() {
-    const form = this.data.scoreForm
-    const entries = this.data.visibleMembers
-      .filter(m => m.userOpenid !== this.data.myOpenid && form[m.userOpenid])
-      .map(m => ({ toOpenid: m.userOpenid, amount: parseInt(form[m.userOpenid], 10) }))
-
-    if (form._tea && parseInt(form._tea, 10) > 0) {
-      entries.push({ toOpenid: '', amount: parseInt(form._tea, 10) })
-    }
-
-    if (!entries.length) {
-      wx.showToast({ title: '请至少填写一项', icon: 'none' })
+  // 点击成员头像：打开快速计分弹层（给该成员转账）
+  onTapMember(e) {
+    if (this.data.readOnly || this.data.info.state !== 1) return
+    const { openid, name } = e.currentTarget.dataset
+    if (openid === this.data.myOpenid) {
+      wx.showToast({ title: '不能给自己转账', icon: 'none' })
       return
     }
+    this.setData({
+      showQuickScore: true,
+      quickTargetOpenid: openid,
+      quickTargetName: '转给 ' + name,
+      quickAmount: ''
+    })
+  },
 
+  // 点击茶水图标：打开快速计分弹层（茶水）
+  onTapTea() {
+    if (this.data.readOnly || this.data.info.state !== 1) return
+    this.setData({
+      showQuickScore: true,
+      quickTargetOpenid: '',
+      quickTargetName: '茶水费',
+      quickAmount: ''
+    })
+  },
+
+  onCloseQuickScore() {
+    this.setData({ showQuickScore: false })
+  },
+
+  onQuickInput(e) {
+    this.setData({ quickAmount: e.detail.value })
+  },
+
+  async onSubmitQuickScore() {
+    const amount = parseInt(this.data.quickAmount, 10)
+    if (!amount || amount <= 0) {
+      wx.showToast({ title: '请输入正整数', icon: 'none' })
+      return
+    }
     const { ok } = await call('room', {
       action: 'score',
       roomId: this.data.id,
-      entries
+      entries: [{ toOpenid: this.data.quickTargetOpenid, amount }]
     })
-
     if (ok) {
-      this.setData({ showScorePopup: false })
+      this.setData({ showQuickScore: false })
     }
   },
 

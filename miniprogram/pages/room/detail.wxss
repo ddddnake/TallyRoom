@@ -49,3 +49,38 @@
   padding: 0 16rpx; font-size: 28rpx; text-align: right;
 }
 .score-close { text-align: center; margin-top: 24rpx; }
+
+/* 快速计分弹层 */
+.action-hint {
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--color-text-secondary);
+  padding: 12rpx 0;
+  background: #fff;
+}
+
+.quick-score-popup {
+  width: 560rpx; background: #fff; border-radius: 24rpx;
+  padding: 48rpx 40rpx 32rpx; text-align: center;
+}
+.quick-score-title {
+  font-size: 34rpx; font-weight: 600; color: #333; margin-bottom: 12rpx;
+}
+.quick-score-hint {
+  font-size: 26rpx; color: #999; margin-bottom: 32rpx;
+}
+.quick-score-input {
+  width: 100%; height: 88rpx;
+  border: 2rpx solid #eee; border-radius: 12rpx;
+  text-align: center; font-size: 40rpx;
+  margin-bottom: 32rpx;
+}
+.quick-score-actions {
+  display: flex; gap: 24rpx; justify-content: space-around;
+}
+.quick-score-actions van-button {
+  flex: 1;
+}
+
+.user-card { transition: transform 0.1s; }
+.user-card:active { transform: scale(0.95); }
