@@ -1,0 +1,120 @@
+const { NO_PROFILE, ROOM_NOT_FOUND, ROOM_CLOSED } = require('./lib/codes')
+
+async function create(event, openid, db, { generateCode }) {
+  // 查 profile
+  const profileRes = await db.collection('profiles').doc(openid).get().catch(() => ({ data: [] }))
+  if (!profileRes.data || !profileRes.data.length) {
+    return { ok: false, code: NO_PROFILE, message: '请先设置头像和昵称' }
+  }
+
+  const nickName = profileRes.data[0].nickName
+  const roomName = event.name || nickName + '的房间'
+
+  // 生成不重复邀请码
+  let code
+  for (let i = 0; i < 5; i++) {
+    code = generateCode()
+    const existRes = await db.collection('rooms').where({ code }).get()
+    if (!existRes.data.length) break
+  }
+  if (!code) return { ok: false, code: 'CODE_GENERATION_FAILED' }
+
+  const now = Date.now()
+
+  // 事务：写 rooms + room_members
+  const result = await db.runTransaction(async (tx) => {
+    const roomAdd = await tx.collection('rooms').add({
+      data: {
+        code,
+        name: roomName,
+        state: 1,
+        ownerOpenid: openid,
+        _openid: openid,
+        memberCount: 1,
+        createdAt: now
+      }
+    })
+
+    await tx.collection('room_members').add({
+      data: {
+        roomId: roomAdd._id,
+        userOpenid: openid,
+        nickName,
+        avatarUrl: profileRes.data[0].avatarUrl,
+        state: 1,
+        joinedAt: now
+      }
+    })
+
+    return { roomId: roomAdd._id, code }
+  })
+
+  return { ok: true, data: result }
+}
+
+async function join(event, openid, db) {
+  const { code } = event
+
+  // 查房间
+  const roomRes = await db.collection('rooms').where({ code }).get()
+  if (!roomRes.data.length) {
+    return { ok: false, code: ROOM_NOT_FOUND, message: '房间不存在' }
+  }
+  const room = roomRes.data[0]
+  if (room.state !== 1) {
+    return { ok: false, code: ROOM_CLOSED, message: '房间已关闭' }
+  }
+
+  // 查 profile（获取最新昵称头像做快照）
+  const profileRes = await db.collection('profiles').doc(openid).get().catch(() => ({ data: [] }))
+  const nickName = profileRes.data && profileRes.data.length ? profileRes.data[0].nickName : '新成员'
+  const avatarUrl = profileRes.data && profileRes.data.length ? profileRes.data[0].avatarUrl : ''
+
+  // 查是否已有 member 记录
+  const memRes = await db.collection('room_members').where({ roomId: room._id, userOpenid: openid }).get()
+
+  if (memRes.data.length) {
+    const member = memRes.data[0]
+    if (member.state === 1) {
+      // 已经是成员，幂等
+      return { ok: true, data: { roomId: room._id } }
+    }
+    // state === 2，复用记录重新加入
+    await db.runTransaction(async (tx) => {
+      await tx.collection('room_members').doc(member._id).update({
+        data: {
+          state: 1,
+          leftAt: null,
+          nickName,
+          avatarUrl
+        }
+      })
+      await tx.collection('rooms').doc(room._id).update({
+        data: { memberCount: room.memberCount + 1 }
+      })
+    })
+    return { ok: true, data: { roomId: room._id } }
+  }
+
+  // 新成员
+  const now = Date.now()
+  await db.runTransaction(async (tx) => {
+    await tx.collection('room_members').add({
+      data: {
+        roomId: room._id,
+        userOpenid: openid,
+        nickName,
+        avatarUrl,
+        state: 1,
+        joinedAt: now
+      }
+    })
+    await tx.collection('rooms').doc(room._id).update({
+      data: { memberCount: room.memberCount + 1 }
+    })
+  })
+
+  return { ok: true, data: { roomId: room._id } }
+}
+
+module.exports = { create, join }

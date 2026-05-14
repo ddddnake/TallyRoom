@@ -29,6 +29,13 @@ class Collection {
     this._nextId = Math.max(0, ...records.map(r => r._id || 0)) + 1
   }
 
+  _insert(record) {
+    const rec = { ...record }
+    if (!rec._id) rec._id = String(this._nextId++)
+    this._records.push(rec)
+    return rec
+  }
+
   doc(id) {
     const rec = this._records.find(r => r._id === id)
     return {
