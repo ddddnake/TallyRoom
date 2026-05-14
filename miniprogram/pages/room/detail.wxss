@@ -35,6 +35,15 @@
 .msg-item { margin-bottom: 24rpx; }
 .msg-time { font-size: 22rpx; color: #bbb; margin-bottom: 4rpx; }
 .msg-text { font-size: 28rpx; color: #333; background: #fff; padding: 12rpx 20rpx; border-radius: 8rpx; display: inline-block; }
+.msg-part-name { color: #333; font-weight: 600; }
+.msg-part-arrow { color: #bbb; padding: 0 4rpx; }
+.msg-part-amount {
+  color: #ff2a1f;
+  font-weight: 700;
+  font-size: 32rpx;
+  padding: 0 4rpx;
+}
+.msg-part-txt { color: #555; }
 
 .footer {
   display: flex; justify-content: space-around; align-items: center;

@@ -30,11 +30,34 @@ function compute(orders, members) {
 
   const messages = orders.map(o => {
     const fromName = o.fromNickSnap || memberMap[o.fromOpenid] || o.fromOpenid
-    if (!o.toOpenid || o.toOpenid === '') {
-      return { text: `${fromName} 付茶水 ${o.amount} 分`, time: o.createdAt, id: o._id }
+    const amount = o.amount
+    const isTea = !o.toOpenid || o.toOpenid === ''
+    // 拆分成片段，便于在 wxml 里给金额单独着色
+    let parts
+    if (isTea) {
+      parts = [
+        { type: 'name', text: fromName },
+        { type: 'txt', text: ' 付茶水 ' },
+        { type: 'amount', text: amount },
+        { type: 'txt', text: ' 分' }
+      ]
+    } else {
+      const toName = o.toNickSnap || memberMap[o.toOpenid] || o.toOpenid
+      parts = [
+        { type: 'name', text: fromName },
+        { type: 'arrow', text: ' → ' },
+        { type: 'name', text: toName },
+        { type: 'txt', text: ' ' },
+        { type: 'amount', text: amount },
+        { type: 'txt', text: ' 分' }
+      ]
     }
-    const toName = o.toNickSnap || memberMap[o.toOpenid] || o.toOpenid
-    return { text: `${fromName} → ${toName} ${o.amount} 分`, time: o.createdAt, id: o._id }
+    return {
+      text: parts.map(p => p.text).join(''),  // 兼容旧用法
+      parts,
+      time: o.createdAt,
+      id: o._id
+    }
   })
 
   return { userScores, teaTotal, messages }

@@ -28,7 +28,7 @@
       <!-- 邀请按钮 -->
       <view class="user-card invite-card" bindtap="onTapInvite">
         <view class="user-avatar invite-avatar">
-          <image src="../../images/invite.png" mode="widthFix" style="width:100%;height:100%"/>
+          <van-icon name="plus" size="56rpx" color="#FF5032"/>
         </view>
         <view class="user-name">邀请好友</view>
         <view class="user-score" style="font-size:24rpx;color:#999">扫码 / 分享</view>
@@ -45,7 +45,9 @@
   <scroll-view class="msg-scroll" scroll-y="{{true}}" scroll-into-view="{{lastMsgId}}">
     <view class="msg-item" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
       <view class="msg-time">{{item.timeText}}</view>
-      <view class="msg-text">{{item.text}}</view>
+      <view class="msg-text">
+        <text wx:for="{{item.parts}}" wx:for-item="part" wx:key="index" class="msg-part-{{part.type}}">{{part.text}}</text>
+      </view>
     </view>
     <van-empty wx:if="{{!messages.length}}" description="暂无记录" />
   </scroll-view>
