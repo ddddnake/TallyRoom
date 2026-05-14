@@ -40,7 +40,6 @@ async function create(event, openid, db, { generateCode }) {
 
   await db.collection('rooms').doc(roomId).set({
     data: {
-      _id: roomId,
       code,
       name: roomName,
       state: 1,
