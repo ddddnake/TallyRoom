@@ -21,35 +21,32 @@ async function create(event, openid, db, { generateCode }) {
 
   const now = Date.now()
 
-  // 事务：写 rooms + room_members
-  const result = await db.runTransaction(async (tx) => {
-    const roomAdd = await tx.collection('rooms').add({
-      data: {
-        code,
-        name: roomName,
-        state: 1,
-        ownerOpenid: openid,
-        _openid: openid,
-        memberCount: 1,
-        createdAt: now
-      }
-    })
-
-    await tx.collection('room_members').add({
-      data: {
-        roomId: roomAdd._id,
-        userOpenid: openid,
-        nickName,
-        avatarUrl: profileRes.data[0].avatarUrl,
-        state: 1,
-        joinedAt: now
-      }
-    })
-
-    return { roomId: roomAdd._id, code }
+  // 先创建房间
+  const roomAdd = await db.collection('rooms').add({
+    data: {
+      code,
+      name: roomName,
+      state: 1,
+      ownerOpenid: openid,
+      _openid: openid,
+      memberCount: 1,
+      createdAt: now
+    }
   })
 
-  return { ok: true, data: result }
+  // 再添加房主为成员
+  await db.collection('room_members').add({
+    data: {
+      roomId: roomAdd._id,
+      userOpenid: openid,
+      nickName,
+      avatarUrl: profileRes.data[0].avatarUrl,
+      state: 1,
+      joinedAt: now
+    }
+  })
+
+  return { ok: true, data: { roomId: roomAdd._id, code } }
 }
 
 async function join(event, openid, db) {
@@ -98,20 +95,18 @@ async function join(event, openid, db) {
 
   // 新成员
   const now = Date.now()
-  await db.runTransaction(async (tx) => {
-    await tx.collection('room_members').add({
-      data: {
-        roomId: room._id,
-        userOpenid: openid,
-        nickName,
-        avatarUrl,
-        state: 1,
-        joinedAt: now
-      }
-    })
-    await tx.collection('rooms').doc(room._id).update({
-      data: { memberCount: room.memberCount + 1 }
-    })
+  await db.collection('room_members').add({
+    data: {
+      roomId: room._id,
+      userOpenid: openid,
+      nickName,
+      avatarUrl,
+      state: 1,
+      joinedAt: now
+    }
+  })
+  await db.collection('rooms').doc(room._id).update({
+    data: { memberCount: room.memberCount + 1 }
   })
 
   return { ok: true, data: { roomId: room._id } }
@@ -161,26 +156,24 @@ async function score(event, openid, db) {
   const fromNickSnap = myMem.data[0].nickName
   const now = Date.now()
 
-  // 事务批量写 orders
-  await db.runTransaction(async (tx) => {
-    for (const e of entries) {
-      let toNickSnap = ''
-      if (e.toOpenid && memberMap[e.toOpenid]) {
-        toNickSnap = memberMap[e.toOpenid].nickName
-      }
-      await tx.collection('room_orders').add({
-        data: {
-          roomId,
-          fromOpenid: openid,
-          toOpenid: e.toOpenid || '',
-          amount: e.amount,
-          fromNickSnap,
-          toNickSnap,
-          createdAt: now
-        }
-      })
+  // 逐条写入 orders
+  for (const e of entries) {
+    let toNickSnap = ''
+    if (e.toOpenid && memberMap[e.toOpenid]) {
+      toNickSnap = memberMap[e.toOpenid].nickName
     }
-  })
+    await db.collection('room_orders').add({
+      data: {
+        roomId,
+        fromOpenid: openid,
+        toOpenid: e.toOpenid || '',
+        amount: e.amount,
+        fromNickSnap,
+        toNickSnap,
+        createdAt: now
+      }
+    })
+  }
 
   return { ok: true, data: { count: entries.length } }
 }
