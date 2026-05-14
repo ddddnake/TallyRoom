@@ -38,14 +38,25 @@ Page({
         wx.redirectTo({ url: '/pages/setup/profile' })
         return
       }
+      if (profile._openid) this.setData({ myOpenid: profile._openid })
+    } else {
+      // 普通进入也要拿 openid 用于 wxml 渲染
+      const profile = await app.getProfile()
+      if (profile && profile._openid) this.setData({ myOpenid: profile._openid })
     }
 
     // 通过分享链接进入：先确保已加入房间
     if (this.data.shareCode && !this._joined) {
-      const { ok } = await call('room', { action: 'join', code: this.data.shareCode })
+      console.log('[room] joining via share code:', this.data.shareCode, 'roomId:', this.data.id)
+      const { ok, data, code } = await call('room', { action: 'join', code: this.data.shareCode })
+      console.log('[room] join result:', { ok, data, code })
       if (!ok) {
         wx.switchTab({ url: '/pages/index/index' })
         return
+      }
+      // 如果服务端返回的 roomId 与 url 中的不一致，以服务端为准
+      if (data && data.roomId && data.roomId !== this.data.id) {
+        this.setData({ id: data.roomId })
       }
       this._joined = true
     }
