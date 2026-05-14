@@ -38,7 +38,7 @@
 
   <!-- 操作提示 -->
   <view class="action-hint" wx:if="{{!readOnly && info.state === 1}}">
-    点击成员头像给 ta 转账，点击茶水图标记茶水费
+    点自己头像改资料 · 点别人头像转账 · 点茶水图标记茶水费
   </view>
 
   <!-- 消息流 -->
@@ -71,6 +71,24 @@
         <van-button plain round bindtap="onCloseQuickScore">取消</van-button>
         <van-button type="primary" round color="#FF5032" bindtap="onSubmitQuickScore">确定</van-button>
       </view>
+    </view>
+  </van-popup>
+
+  <!-- 个人资料编辑弹层 -->
+  <van-popup show="{{showProfileEditor}}" bind:close="onCloseProfileEditor" custom-style="background:none">
+    <view class="profile-editor">
+      <view class="profile-editor-title">编辑个人资料</view>
+      <button class="profile-avatar-btn" open-type="chooseAvatar" bindchooseavatar="onEditChooseAvatar">
+        <image class="profile-avatar-img" src="{{editAvatarDisplay}}" mode="aspectFill" wx:if="{{editAvatarDisplay}}"/>
+        <van-icon name="plus" size="48rpx" color="#ccc" wx:else/>
+      </button>
+      <view class="profile-avatar-hint">点击更换头像</view>
+      <input class="profile-nick-input" type="nickname" placeholder="昵称" value="{{editNickName}}" bindinput="onEditNickInput"/>
+      <view class="profile-editor-actions">
+        <van-button plain round bindtap="onCloseProfileEditor">取消</van-button>
+        <van-button type="primary" round color="#FF5032" bindtap="onSaveProfile">保存</van-button>
+      </view>
+      <view class="profile-editor-tip">说明：修改后，本房间内已有的记录依然显示原昵称，新房间和新计分会用新昵称。</view>
     </view>
   </van-popup>
 </view>

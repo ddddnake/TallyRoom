@@ -10,7 +10,7 @@ describe('upsertProfile', () => {
       openid,
       db
     )
-    expect(result).toEqual({ ok: true })
+    expect(result.ok).toBe(true)
 
     const { data } = await db.collection('profiles').doc(openid).get()
     expect(data[0].nickName).toBe('老王')
@@ -60,5 +60,36 @@ describe('upsertProfile', () => {
       db
     )
     expect(result.ok).toBe(false)
+  })
+
+  test('更新昵称头像后会刷新进行中房间的成员快照', async () => {
+    const db = new InMemoryDB()
+    // 用户已在两个房间：一个进行中（state=1），一个已退出（state=2）
+    db.collection('room_members')._seed([
+      { _id: 'm1', roomId: 'r1', userOpenid: 'openid_abc', state: 1, nickName: '旧名', avatarUrl: 'old' },
+      { _id: 'm2', roomId: 'r2', userOpenid: 'openid_abc', state: 2, nickName: '旧名', avatarUrl: 'old' },
+      { _id: 'm3', roomId: 'r3', userOpenid: 'openid_xyz', state: 1, nickName: '别人', avatarUrl: 'x' }
+    ])
+
+    const result = await upsertProfile(
+      { nickName: '新名', avatarUrl: 'new' },
+      'openid_abc',
+      db
+    )
+    expect(result.ok).toBe(true)
+    expect(result.data.refreshed).toBe(1)
+
+    // 进行中房间的成员快照已刷新
+    const { data: m1 } = await db.collection('room_members').doc('m1').get()
+    expect(m1[0].nickName).toBe('新名')
+    expect(m1[0].avatarUrl).toBe('new')
+
+    // 已退出的不刷新
+    const { data: m2 } = await db.collection('room_members').doc('m2').get()
+    expect(m2[0].nickName).toBe('旧名')
+
+    // 别人的不动
+    const { data: m3 } = await db.collection('room_members').doc('m3').get()
+    expect(m3[0].nickName).toBe('别人')
   })
 })

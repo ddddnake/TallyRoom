@@ -90,3 +90,40 @@
 
 .user-card { transition: transform 0.1s; }
 .user-card:active { transform: scale(0.95); }
+
+/* 个人资料编辑弹层 */
+.profile-editor {
+  width: 580rpx; background: #fff; border-radius: 24rpx;
+  padding: 40rpx 40rpx 32rpx;
+}
+.profile-editor-title {
+  font-size: 32rpx; font-weight: 600; text-align: center;
+  margin-bottom: 32rpx;
+}
+.profile-avatar-btn {
+  width: 160rpx; height: 160rpx; border-radius: 50%;
+  border: 2rpx dashed #ddd; background: #f9f9f9;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; margin: 0 auto;
+  overflow: hidden;
+}
+.profile-avatar-btn::after { border: none; }
+.profile-avatar-img { width: 100%; height: 100%; }
+.profile-avatar-hint {
+  text-align: center; font-size: 24rpx; color: #bbb;
+  margin: 16rpx 0 32rpx;
+}
+.profile-nick-input {
+  width: 100%; height: 80rpx; text-align: center;
+  border-bottom: 2rpx solid #eee; font-size: 30rpx;
+  margin-bottom: 32rpx;
+}
+.profile-editor-actions {
+  display: flex; gap: 24rpx;
+}
+.profile-editor-actions van-button { flex: 1; }
+.profile-editor-tip {
+  margin-top: 24rpx;
+  font-size: 22rpx; color: #aaa; line-height: 1.5;
+  text-align: center;
+}

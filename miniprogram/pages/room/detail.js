@@ -18,7 +18,11 @@ Page({
     quickTargetOpenid: '',
     quickTargetName: '',
     quickAmount: '',
-    lastMsgId: ''
+    lastMsgId: '',
+    showProfileEditor: false,
+    editAvatarDisplay: '',
+    editAvatarLocal: '',
+    editNickName: ''
   },
 
   onLoad(options) {
@@ -184,20 +188,104 @@ Page({
     })
   },
 
-  // 点击成员头像：打开快速计分弹层（给该成员转账）
+  // 点击成员头像：自己 → 资料编辑；他人 → 转账
   onTapMember(e) {
-    if (this.data.readOnly || this.data.info.state !== 1) return
     const { openid, name } = e.currentTarget.dataset
     if (openid === this.data.myOpenid) {
-      wx.showToast({ title: '不能给自己转账', icon: 'none' })
+      this._openProfileEditor()
       return
     }
+    if (this.data.readOnly || this.data.info.state !== 1) return
     this.setData({
       showQuickScore: true,
       quickTargetOpenid: openid,
       quickTargetName: '转给 ' + name,
       quickAmount: ''
     })
+  },
+
+  async _openProfileEditor() {
+    const profile = await app.getProfile()
+    if (!profile) return
+    // 把已是 https 的临时 URL 留作展示，新选才会替换
+    let displayAvatar = profile.avatarUrl
+    if (displayAvatar && displayAvatar.startsWith('cloud://')) {
+      // 通过缓存或现拉一次临时 URL
+      if (this._urlCache && this._urlCache[displayAvatar]) {
+        displayAvatar = this._urlCache[displayAvatar]
+      } else {
+        try {
+          const res = await wx.cloud.getTempFileURL({ fileList: [displayAvatar] })
+          if (res.fileList && res.fileList[0] && res.fileList[0].tempFileURL) {
+            if (!this._urlCache) this._urlCache = {}
+            this._urlCache[profile.avatarUrl] = res.fileList[0].tempFileURL
+            displayAvatar = res.fileList[0].tempFileURL
+          }
+        } catch (e) { /* ignore */ }
+      }
+    }
+    this.setData({
+      showProfileEditor: true,
+      editAvatarDisplay: displayAvatar,
+      editAvatarLocal: '',
+      editNickName: profile.nickName || ''
+    })
+  },
+
+  onCloseProfileEditor() {
+    this.setData({ showProfileEditor: false })
+  },
+
+  onEditChooseAvatar(e) {
+    this.setData({
+      editAvatarLocal: e.detail.avatarUrl,
+      editAvatarDisplay: e.detail.avatarUrl
+    })
+  },
+
+  onEditNickInput(e) {
+    this.setData({ editNickName: e.detail.value })
+  },
+
+  async onSaveProfile() {
+    const nickName = (this.data.editNickName || '').trim()
+    if (!nickName) {
+      wx.showToast({ title: '昵称不能为空', icon: 'none' })
+      return
+    }
+    if (this._savingProfile) return
+    this._savingProfile = true
+    wx.showLoading({ title: '保存中...', mask: true })
+    try {
+      const profile = await app.getProfile()
+      let finalUrl = profile.avatarUrl
+
+      // 用户选了新头像 → 上传到云存储
+      if (this.data.editAvatarLocal) {
+        const local = this.data.editAvatarLocal
+        const ext = (local.match(/\.(\w+)(\?|$)/) || [])[1] || 'jpg'
+        const cloudPath = 'avatars/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext
+        const uploadRes = await wx.cloud.uploadFile({ cloudPath, filePath: local })
+        finalUrl = uploadRes.fileID
+      }
+
+      const { ok } = await call('user', {
+        action: 'upsertProfile',
+        nickName,
+        avatarUrl: finalUrl
+      })
+      if (ok) {
+        app.clearProfileCache()
+        this.setData({ showProfileEditor: false })
+        wx.showToast({ title: '已保存', icon: 'success' })
+      }
+    } catch (e) {
+      console.error('save profile failed', e)
+      wx.showToast({ title: '保存失败', icon: 'none' })
+    } finally {
+      wx.hideLoading()
+      this._savingProfile = false
+    }
   },
 
   // 点击茶水图标：打开快速计分弹层（茶水）
