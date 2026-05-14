@@ -1,0 +1,14 @@
+<view class="history-page">
+  <van-empty wx:if="{{!rooms.length && !loading}}" description="还没有参与过房间" />
+  <view class="room-list" wx:if="{{rooms.length}}">
+    <view class="room-item" wx:for="{{rooms}}" wx:key="_id" bindtap="onTapRoom" data-id="{{item._id}}" data-state="{{item.state}}">
+      <view class="room-info">
+        <text class="room-name">{{item.name}}</text>
+        <text class="room-date">{{item.dateText}}</text>
+      </view>
+      <van-tag type="{{item.state === 1 ? 'primary' : 'default'}}" round color="{{item.state === 1 ? '#52c41a' : '#999'}}">
+        {{item.state === 1 ? '进行中' : '已关闭'}}
+      </van-tag>
+    </view>
+  </view>
+</view>

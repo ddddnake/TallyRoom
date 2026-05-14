@@ -1,0 +1,12 @@
+.history-page {
+  padding: 24rpx;
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+.room-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border-radius: 12rpx; padding: 32rpx 24rpx; margin-bottom: 16rpx;
+}
+.room-name { font-size: 30rpx; font-weight: 600; color: #333; display: block; }
+.room-date { font-size: 24rpx; color: #999; display: block; margin-top: 6rpx; }
