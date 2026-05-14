@@ -103,13 +103,14 @@
           <text wx:if="{{inviteQrError}}">{{inviteQrError}}</text>
         </view>
       </view>
+      <view class="invite-qrcode-tip">微信扫一扫直接进房</view>
       <view class="invite-code-row">
         <text class="invite-code-label">房间码</text>
         <text class="invite-code-value" selectable>{{info.code}}</text>
         <view class="invite-code-copy" bindtap="onCopyCode">复制</view>
       </view>
       <view class="invite-actions">
-        <button class="invite-share-btn" open-type="share">微信分享</button>
+        <button class="invite-share-btn" open-type="share">微信分享给好友</button>
         <view class="invite-close-btn" bindtap="onCloseInvite">关闭</view>
       </view>
     </view>

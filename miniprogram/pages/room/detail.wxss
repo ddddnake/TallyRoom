@@ -143,6 +143,10 @@
 }
 .invite-qrcode { width: 320rpx; height: 320rpx; }
 .invite-qrcode-loading { font-size: 24rpx; color: #999; }
+.invite-qrcode-tip {
+  text-align: center; font-size: 24rpx; color: #999;
+  margin-top: 16rpx;
+}
 .invite-code-row {
   display: flex; align-items: center; justify-content: center;
   margin-top: 32rpx; gap: 16rpx;
