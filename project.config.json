@@ -29,7 +29,7 @@
     }
   },
   "compileType": "miniprogram",
-  "appid": "wxacbe3291fb5cef05",
+  "appid": "YOUR_APPID_HERE",
   "projectname": "牌友记账",
   "simulatorPluginLibVersion": {},
   "packOptions": {
