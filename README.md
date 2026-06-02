@@ -7,10 +7,11 @@
 ## 运行截图
 
 <p>
-  <img src="docs/screenshots/home.jpg" alt="首页" width="220">
-  <img src="docs/screenshots/room-detail.jpg" alt="房间详情" width="220">
-  <img src="docs/screenshots/settlement.jpg" alt="结算结果" width="220">
-  <img src="docs/screenshots/history.jpg" alt="历史房间" width="220">
+  <img src="docs/screenshots/home.jpg" alt="首页" width="190">
+  <img src="docs/screenshots/settings.jpg" alt="设置页" width="190">
+  <img src="docs/screenshots/room-detail.jpg" alt="房间详情" width="190">
+  <img src="docs/screenshots/settlement.jpg" alt="结算结果" width="190">
+  <img src="docs/screenshots/history.jpg" alt="历史房间" width="190">
 </p>
 
 ## 主要功能
