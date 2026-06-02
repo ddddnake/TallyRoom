@@ -4,6 +4,15 @@
 
 这个仓库适合作为小程序记账类项目的参考，也可以直接 Fork 后改成自己的应用。
 
+## 运行截图
+
+<p>
+  <img src="docs/screenshots/home.jpg" alt="首页" width="220">
+  <img src="docs/screenshots/room-detail.jpg" alt="房间详情" width="220">
+  <img src="docs/screenshots/settlement.jpg" alt="结算结果" width="220">
+  <img src="docs/screenshots/history.jpg" alt="历史房间" width="220">
+</p>
+
 ## 主要功能
 
 - 创建记账房间，并生成房间码。
