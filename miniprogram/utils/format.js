@@ -4,8 +4,9 @@ function formatTime(date) {
   const day = date.getDate()
   const hour = date.getHours()
   const minute = date.getMinutes()
+  const second = date.getSeconds()
   const n = v => (v < 10 ? '0' + v : v)
-  return `${[year, month, day].map(n).join('/')} ${[hour, minute].map(n).join(':')}`
+  return `${[year, month, day].map(n).join('/')} ${[hour, minute, second].map(n).join(':')}`
 }
 
 function toAmount(num) {

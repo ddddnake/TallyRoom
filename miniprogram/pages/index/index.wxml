@@ -1,49 +1,81 @@
 <view class="index-page">
-  <!-- 头部欢迎 -->
-  <view class="index-header">
-    <text class="welcome">{{greeting}}</text>
-    <text class="subtitle">{{statsSummary}}</text>
+  <view class="hero-card">
+    <view class="hero-copy">
+      <text class="hero-eyebrow">牌友记账</text>
+      <text class="welcome">{{greeting}}</text>
+      <text class="subtitle">{{statsSummary}}</text>
+    </view>
+    <image class="hero-image" src="../../images/ui/home-hero.png" mode="aspectFit"/>
   </view>
 
-  <!-- 操作按钮 -->
-  <view class="index-actions">
-    <view class="action-card" bindtap="onCreateRoom">
-      <van-icon name="add-o" size="48rpx" color="#FF5032"/>
-      <text class="action-title">创建房间</text>
-      <text class="action-desc">新开房间，邀请好友加入</text>
+  <view class="stats-card" wx:if="{{stats}}">
+    <view class="section-head">
+      <text class="section-title">本月统计</text>
+      <text class="section-meta">轻松记好每一局</text>
     </view>
-
-    <view class="action-card" bindtap="onShowJoin">
-      <van-icon name="friends-o" size="48rpx" color="#FF5032"/>
-      <text class="action-title">加入房间</text>
-      <text class="action-desc">输入好友的房间码</text>
+    <view class="stats-grid">
+      <view class="stats-item">
+        <view class="stats-icon stats-icon-room">
+          <van-icon name="friends-o" size="34rpx" color="#FF5032"/>
+        </view>
+        <text class="stats-label">参与房间</text>
+        <view class="stats-number-row">
+          <text class="stats-value">{{stats.totalGames}}</text>
+          <text class="stats-unit">个</text>
+        </view>
+      </view>
+      <view class="stats-divider"></view>
+      <view class="stats-item">
+        <view class="stats-icon stats-icon-score">
+          <van-icon name="bar-chart-o" size="34rpx" color="#FF5032"/>
+        </view>
+        <text class="stats-label">总净得分</text>
+        <view class="stats-number-row">
+          <text class="stats-value {{stats.netScore >= 0 ? 'positive' : 'negative'}}">{{stats.netScore >= 0 ? '+' : ''}}{{stats.netScore}}</text>
+          <text class="stats-unit">分</text>
+        </view>
+      </view>
     </view>
   </view>
 
-  <!-- 本月统计 -->
-  <view class="stats-box" wx:if="{{stats}}">
-    <view class="stats-item">
-      <text class="stats-value">{{stats.totalGames}}</text>
-      <text class="stats-label">本月局数</text>
+  <view class="action-stack">
+    <view class="action-card action-card-primary" bindtap="onCreateRoom">
+      <view class="action-icon action-icon-primary">
+        <van-icon name="wap-home-o" size="48rpx" color="#fff"/>
+      </view>
+      <view class="action-copy">
+        <text class="action-title primary-title">创建房间</text>
+        <text class="action-desc primary-desc">创建专属房间，和好友一起记分</text>
+      </view>
+      <van-icon name="arrow" size="30rpx" color="#fff"/>
     </view>
-    <view class="stats-item">
-      <text class="stats-value {{stats.netScore >= 0 ? 'positive' : 'negative'}}">{{stats.netScore >= 0 ? '+' : ''}}{{stats.netScore}}</text>
-      <text class="stats-label">净积分</text>
+
+    <view class="action-card action-card-secondary" bindtap="onShowJoin">
+      <view class="action-icon action-icon-secondary">
+        <van-icon name="friends-o" size="48rpx" color="#69a078"/>
+      </view>
+      <view class="action-copy">
+        <text class="action-title">加入房间</text>
+        <text class="action-desc">输入房间码，加入好友的房间</text>
+      </view>
+      <van-icon name="arrow" size="30rpx" color="#999"/>
     </view>
   </view>
 
-  <!-- 合规声明 -->
   <view class="compliance-tip">
-    本应用仅供好友间娱乐记分使用，禁止用于任何违法行为。
+    <van-icon name="shield-o" size="30rpx" color="#8a6a35"/>
+    <text>本应用仅供好友间娱乐记分使用，禁止用于任何违法行为。</text>
   </view>
 
-  <!-- 加入房间弹层 -->
   <van-popup show="{{showJoin}}" bind:close="onCloseJoin" custom-style="background:none">
     <view class="join-popup">
+      <view class="join-visual">
+        <image src="../../images/ui/tea-cards.png" mode="aspectFit"/>
+      </view>
       <view class="join-title">输入房间码加入</view>
-      <view class="join-hint">让朋友把 6 位房间码发你，或者从微信扫一扫直接扫房间码</view>
-      <input class="join-input" placeholder="如 AB3X9K" maxlength="6" value="{{code}}" bindinput="onCodeInput"/>
-      <van-button type="primary" block round color="#FF5032" bindtap="onJoin" disabled="{{code.length !== 6}}">加入</van-button>
+      <view class="join-hint">让朋友把 6 位房间码发你，或者从微信扫一扫直接进入</view>
+      <input class="join-input" placeholder="AB3X9K" maxlength="6" value="{{code}}" bindinput="onCodeInput"/>
+      <van-button type="primary" block round color="#FF5032" bindtap="onJoin" disabled="{{code.length !== 6}}">加入房间</van-button>
     </view>
     <view class="join-close" bindtap="onCloseJoin">
       <van-icon name="clear" color="#fff" size="48rpx"/>

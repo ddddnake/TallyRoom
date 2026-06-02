@@ -180,8 +180,12 @@ async function join(event, openid, db) {
   if (!profileRes.data || !profileRes.data.length) {
     profileRes = await db.collection('profiles').where({ _openid: openid }).limit(1).get().catch(() => ({ data: [] }))
   }
-  const nickName = profileRes.data && profileRes.data.length ? profileRes.data[0].nickName : '新成员'
-  const avatarUrl = profileRes.data && profileRes.data.length ? profileRes.data[0].avatarUrl : ''
+  // 没设置过 profile 不允许加入房间，避免在房间里显示"新成员"+空头像
+  if (!profileRes.data || !profileRes.data.length) {
+    return { ok: false, code: NO_PROFILE, message: '请先设置头像和昵称' }
+  }
+  const nickName = profileRes.data[0].nickName
+  const avatarUrl = profileRes.data[0].avatarUrl
 
   // 查是否已有 member 记录
   const memRes = await db.collection('room_members').where({ roomId: room._id, userOpenid: openid }).get()
@@ -256,20 +260,39 @@ async function score(event, openid, db) {
   // 校验 entries
   for (const e of entries) {
     if (!Number.isInteger(e.amount) || e.amount <= 0) {
-      return { ok: false, code: INVALID_AMOUNT, message: '金额必须为正整数' }
+      return { ok: false, code: INVALID_AMOUNT, message: '分数必须为正整数' }
     }
     if (e.toOpenid !== '' && e.toOpenid !== undefined && e.toOpenid !== null) {
       if (e.toOpenid === openid) {
-        return { ok: false, code: INVALID_TARGET, message: '不能给自己转账' }
+        return { ok: false, code: INVALID_TARGET, message: '不能给自己记分' }
       }
       if (!memberOpenids.has(e.toOpenid)) {
-        return { ok: false, code: INVALID_TARGET, message: '收款方不是在场成员' }
+        return { ok: false, code: INVALID_TARGET, message: '对方不在房间内' }
       }
     }
   }
 
   const fromNickSnap = myMem.data[0].nickName
   const now = Date.now()
+
+  // 3 秒去重：3 秒内，相同发起人→相同目标人→相同分数，不允许重复
+  const windowStart = now - 3000
+  for (const e of entries) {
+    const recentRes = await db.collection('room_orders')
+      .where({
+        roomId,
+        fromOpenid: openid,
+        toOpenid: e.toOpenid || '',
+        amount: e.amount
+      })
+      .orderBy('createdAt', 'desc')
+      .limit(5)
+      .get()
+    const hit = (recentRes.data || []).some(o => o.createdAt >= windowStart && o.createdAt <= now)
+    if (hit) {
+      return { ok: false, code: 'DUPLICATE_SCORE', message: '3 秒内不能重复记分' }
+    }
+  }
 
   // 逐条写入 orders
   for (const e of entries) {
@@ -389,5 +412,104 @@ async function sweep(event, openid, db) {
   return { ok: true, data: { closed } }
 }
 
-module.exports = { create, join, score, leave, close, sweep }
+// 云端分页拉全集合：云函数侧上限是 100，比客户端 20 大很多
+async function _fetchAllServer(query) {
+  const PAGE = 100
+  let all = []
+  for (let skip = 0; ; skip += PAGE) {
+    const res = await query.skip(skip).limit(PAGE).get()
+    const batch = res.data || []
+    all = all.concat(batch)
+    if (batch.length < PAGE) break
+  }
+  return all
+}
+
+// 历史页聚合：把所有逻辑搬到云端，客户端一次 RPC 拿摘要数组
+// 返回的每项已经是 UI 可直接渲染的形态：{ _id, name, code, state, createdAt, durationMs, myScore, statusType, ... }
+// myScore 含茶水均摊（与房间内头像下方分数同算法）
+async function history(event, openid, db) {
+  const { computeUserScores } = require('./lib/score')
+
+  // 1. 拉本人所有 member 记录
+  const meData = await _fetchAllServer(
+    db.collection('room_members').where({ userOpenid: openid })
+  )
+  if (!meData.length) return { ok: true, data: { rooms: [] } }
+
+  // 同 roomId 取 joinedAt 最新
+  const myMemberByRoom = {}
+  meData.forEach(m => {
+    const prev = myMemberByRoom[m.roomId]
+    if (!prev || (m.joinedAt || 0) >= (prev.joinedAt || 0)) {
+      myMemberByRoom[m.roomId] = m
+    }
+  })
+  const roomIds = Object.keys(myMemberByRoom)
+  const _ = db.command
+
+  // 2. rooms / 全部成员 / 全部订单 并行拉
+  const [roomList, allMembers, ordersList] = await Promise.all([
+    _fetchAllServer(db.collection('rooms').where({ _id: _.in(roomIds) })),
+    _fetchAllServer(db.collection('room_members').where({ roomId: _.in(roomIds) })),
+    _fetchAllServer(db.collection('room_orders').where({ roomId: _.in(roomIds) }))
+  ])
+
+  // 3. 按房间分组
+  const ordersByRoom = {}
+  ordersList.forEach(o => {
+    if (!ordersByRoom[o.roomId]) ordersByRoom[o.roomId] = []
+    ordersByRoom[o.roomId].push(o)
+  })
+  const membersByRoom = {}
+  allMembers.forEach(m => {
+    if (!membersByRoom[m.roomId]) membersByRoom[m.roomId] = []
+    membersByRoom[m.roomId].push(m)
+  })
+
+  // 4. 计算每个房间的摘要
+  const rooms = roomList.map(r => {
+    const myMem = myMemberByRoom[r._id]
+    const myJoinedAt = myMem ? (myMem.joinedAt || 0) : 0
+    const orders = ordersByRoom[r._id] || []
+    const members = membersByRoom[r._id] || []
+
+    // 我相关订单的最后时间，作为参与时长终点
+    let lastMyOrderAt = myJoinedAt
+    orders.forEach(o => {
+      if ((o.fromOpenid === openid || o.toOpenid === openid) && o.createdAt > lastMyOrderAt) {
+        lastMyOrderAt = o.createdAt
+      }
+    })
+    const durationMs = lastMyOrderAt && myJoinedAt ? (lastMyOrderAt - myJoinedAt) : 0
+
+    // 含茶水均摊的最终净分（与房间内头像下方一致）
+    const userScores = computeUserScores(orders, members)
+    const myScore = userScores[openid] || 0
+
+    let statusType
+    if (r.state === 2) statusType = 'closed'
+    else if (myMem && myMem.state !== 1) statusType = 'left'
+    else statusType = 'active'
+
+    return {
+      _id: r._id,
+      name: r.name,
+      code: r.code,
+      state: r.state,
+      createdAt: r.createdAt,
+      ownerOpenid: r.ownerOpenid,
+      memberCount: r.memberCount,
+      durationMs,
+      myScore,
+      myJoinedAt,
+      lastMyOrderAt,
+      statusType
+    }
+  }).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+
+  return { ok: true, data: { rooms } }
+}
+
+module.exports = { create, join, score, leave, close, sweep, history }
 

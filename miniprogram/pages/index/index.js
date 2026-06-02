@@ -11,15 +11,20 @@ Page({
   },
 
   async onShow() {
-    // 检查 profile
+    const hours = new Date().getHours()
+    const g = hours < 11 ? '早上好' : hours < 14 ? '中午好' : hours < 18 ? '下午好' : '晚上好'
+
+    // 匿名也能浏览首页：未设置 profile 时显示通用欢迎语，主功能仍可见
     const profile = await app.getProfile()
     if (!profile) {
-      wx.redirectTo({ url: '/pages/setup/profile' })
+      this.setData({
+        greeting: g + '，欢迎',
+        statsSummary: '一起打牌，轻松记账',
+        stats: null
+      })
       return
     }
     this._myOpenid = profile._openid || profile._id
-    const hours = new Date().getHours()
-    const g = hours < 11 ? '早上好' : hours < 14 ? '中午好' : hours < 18 ? '下午好' : '晚上好'
     this.setData({ greeting: g + '，' + profile.nickName })
 
     // 先 sweep 一遍：把超时的进行中房间自动关闭（静默）
@@ -43,52 +48,51 @@ Page({
 
     // 加载本月简要统计
     await this._loadStats()
-  },
 
-  async _loadStats() {
-    const db = wx.cloud.database()
-    const _ = db.command
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
-    const myOpenid = this._myOpenid
-    if (!myOpenid) return
-
-    try {
-      // 本月我参与过的房间数（按 room_members joinedAt 算）
-      const myMemRes = await db.collection('room_members').where({
-        userOpenid: myOpenid,
-        joinedAt: _.gte(monthStart)
-      }).get()
-      const totalGames = (myMemRes.data || []).length
-
-      // 本月我相关的订单（我作为付方或收方）→ 算净分
-      // 用 or 语义：我付的 + 我收的
-      const ordersRes = await db.collection('room_orders').where(
-        _.and([
-          { createdAt: _.gte(monthStart) },
-          _.or([
-            { fromOpenid: myOpenid },
-            { toOpenid: myOpenid }
-          ])
-        ])
-      ).get()
-
-      let netScore = 0
-      ;(ordersRes.data || []).forEach(o => {
-        if (o.toOpenid === myOpenid) netScore += (o.amount || 0)
-        if (o.fromOpenid === myOpenid) netScore -= (o.amount || 0)
-      })
-
-      this.setData({ stats: { totalGames, netScore } })
-    } catch (e) {
-      console.error('stats load error', e)
+    // 授权完成后回到首页，自动续上之前的意图（创建/加入）
+    const pendingIntent = wx.getStorageSync('pending_intent')
+    if (pendingIntent) {
+      wx.removeStorageSync('pending_intent')
+      if (pendingIntent.action === 'create') this.onCreateRoom()
+      else if (pendingIntent.action === 'join') this.onShowJoin()
     }
   },
 
-  async onCreateRoom() {
-    // 先让用户填局名（可留空走默认）
+  // 主动操作前确保已设置 profile；未设置则跳引导页（保留意图）
+  async _ensureProfile(intent) {
     const profile = await app.getProfile()
-    const defaultName = (profile && profile.nickName ? profile.nickName : '') + '的房间'
+    if (profile) return profile
+    if (intent) wx.setStorageSync('pending_intent', intent)
+    wx.navigateTo({ url: '/pages/setup/profile' })
+    return null
+  },
+
+  async _loadStats() {
+    const myOpenid = this._myOpenid
+    if (!myOpenid) return
+    const monthStart = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1
+    ).getTime()
+
+    // 复用 room.history：里面的 myScore 已含茶水均摊，跟历史页/房间内一致
+    const { ok, data } = await call('room', { action: 'history' }, { silent: true })
+    if (!ok || !data) return
+
+    const monthRooms = (data.rooms || []).filter(r => (r.createdAt || 0) >= monthStart)
+    const totalGames = monthRooms.length
+    const netScore = monthRooms.reduce((sum, r) => sum + (r.myScore || 0), 0)
+    this.setData({ stats: { totalGames, netScore } })
+  },
+
+  async onCreateRoom() {
+    // 未授权：跳引导页，回来后自动恢复"创建"意图
+    const profile = await this._ensureProfile({ action: 'create' })
+    if (!profile) return
+
+    // 先让用户填局名（可留空走默认）
+    const defaultName = (profile.nickName ? profile.nickName : '') + '的房间'
     const input = await new Promise(resolve => {
       wx.showModal({
         title: '创建房间',
@@ -117,7 +121,10 @@ Page({
     wx.showToast({ title: res.message || '创建失败', icon: 'none' })
   },
 
-  onShowJoin() { this.setData({ showJoin: true, code: '' }) },
+  async onShowJoin() {
+    if (!(await this._ensureProfile({ action: 'join' }))) return
+    this.setData({ showJoin: true, code: '' })
+  },
   onCloseJoin() { this.setData({ showJoin: false }) },
 
   onCodeInput(e) {

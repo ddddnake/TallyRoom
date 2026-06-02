@@ -1,22 +1,32 @@
 <view class="setup-page">
-  <view class="setup-header">
-    <text class="setup-title">欢迎使用打牌记账</text>
-    <text class="setup-desc">先设置你的头像和昵称</text>
+  <view class="profile-hero">
+    <image class="profile-hero-img" src="../../images/ui/profile-hero.png" mode="aspectFill"/>
   </view>
 
-  <view class="setup-avatar">
-    <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-      <image class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" wx:if="{{avatarUrl}}"/>
-      <van-icon name="plus" size="48rpx" color="#ccc" wx:else/>
-    </button>
-    <text class="avatar-hint">点击选择头像</text>
-  </view>
+  <view class="profile-card">
+    <view class="avatar-section">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" wx:if="{{avatarUrl}}"/>
+        <view class="avatar-placeholder" wx:else>
+          <van-icon name="plus" size="54rpx" color="#ff8a68"/>
+        </view>
+        <view class="camera-badge">
+          <van-icon name="photograph" size="34rpx" color="#fff"/>
+        </view>
+      </button>
+      <text class="avatar-hint">点击选择头像</text>
+    </view>
 
-  <view class="setup-nickname">
-    <input class="nickname-input" type="nickname" placeholder="请输入昵称" value="{{nickName}}" bindinput="onNickInput"/>
-  </view>
+    <view class="field-row">
+      <text class="field-label">昵称</text>
+      <view class="nickname-box">
+        <input class="nickname-input" type="nickname" placeholder="请输入昵称" maxlength="16" value="{{nickName}}" bindinput="onNickInput"/>
+        <text class="nickname-count">{{nickName.length || 0}}/16</text>
+      </view>
+    </view>
 
-  <view class="setup-footer">
-    <van-button type="primary" block round color="#FF5032" bindtap="onSubmit" disabled="{{!avatarUrl || !nickName}}">完成</van-button>
+    <view class="setup-footer">
+      <van-button type="primary" block round color="#FF5032" custom-style="background: linear-gradient(135deg, #ff5032, #ff6f3d); border: none;" bindtap="onSubmit" disabled="{{!avatarUrl || !nickName}}" loading="{{submitting}}">完成</van-button>
+    </view>
   </view>
 </view>

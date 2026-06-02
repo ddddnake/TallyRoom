@@ -111,7 +111,7 @@ describe('score', () => {
     expect(result.code).toBe('INVALID_TARGET')
   })
 
-  test('不能给自己转账', async () => {
+  test('不能给自己记分', async () => {
     const db = setupDB()
     const roomId = await setupRoom(db, 'a_openid')
     const result = await score({
@@ -131,6 +131,37 @@ describe('score', () => {
     }, 'a_openid', db)
     expect(result.ok).toBe(false)
     expect(result.code).toBe('INVALID_AMOUNT')
+  })
+
+  test('3 秒内相同计分不允许重复', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert(
+      { _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'x' }
+    )
+    const roomId = await setupRoom(db, 'a_openid')
+    await addMember(db, roomId, 'b_openid', 'B')
+
+    // 第一次计分成功
+    const first = await score({
+      roomId,
+      entries: [{ toOpenid: 'b_openid', amount: 5 }]
+    }, 'a_openid', db)
+    expect(first.ok).toBe(true)
+
+    // 3 秒内再次 A→B 5分应被拒绝
+    const dup = await score({
+      roomId,
+      entries: [{ toOpenid: 'b_openid', amount: 5 }]
+    }, 'a_openid', db)
+    expect(dup.ok).toBe(false)
+    expect(dup.code).toBe('DUPLICATE_SCORE')
+
+    // 3 秒内 A→B 不同分数可以
+    const diff = await score({
+      roomId,
+      entries: [{ toOpenid: 'b_openid', amount: 10 }]
+    }, 'a_openid', db)
+    expect(diff.ok).toBe(true)
   })
 })
 
@@ -194,6 +225,20 @@ describe('join', () => {
     const result = await join({ code: roomRes.data.code }, 'b_openid', db)
     expect(result.ok).toBe(false)
     expect(result.code).toBe('ROOM_CLOSED')
+  })
+
+  test('未设置 profile 的用户不能加入房间', async () => {
+    const db = setupDB()
+    const roomRes = await create({}, 'a_openid', db, { generateCode: generate })
+
+    // c_openid 没有 profile
+    const result = await join({ code: roomRes.data.code }, 'c_openid', db)
+    expect(result.ok).toBe(false)
+    expect(result.code).toBe('NO_PROFILE')
+
+    // 不应有成员记录被写入
+    const mems = await db.collection('room_members').where({ userOpenid: 'c_openid' }).get()
+    expect(mems.data.length).toBe(0)
   })
 })
 
@@ -368,5 +413,96 @@ describe('sweep 自动关闭', () => {
     const r2 = await create({}, 'a_openid', db, { generateCode: generate })
     expect(r2.ok).toBe(true)
     expect(r2.data.roomId).not.toBe(r1.data.roomId)
+  })
+})
+
+const { history } = require('./handlers')
+
+describe('history 聚合', () => {
+  test('返回我参与过的房间摘要，含正确的 myScore 和 statusType', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert(
+      { _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'y' }
+    )
+    // a 创建房间 1，b 加入，b 给 a 记 10 分
+    const r1 = await create({ name: '局1' }, 'a_openid', db, { generateCode: generate })
+    await join({ code: r1.data.code }, 'b_openid', db)
+    await score({
+      roomId: r1.data.roomId,
+      entries: [{ toOpenid: 'a_openid', amount: 10 }]
+    }, 'b_openid', db)
+
+    // a 退出房间 1（不然不能创建新房）→ 创建房间 2 → 关闭
+    await leave({ roomId: r1.data.roomId }, 'a_openid', db)
+    const r2 = await create({ name: '局2' }, 'a_openid', db, { generateCode: generate })
+    await db.collection('rooms').doc(r2.data.roomId).update({ data: { state: 2 } })
+
+    const result = await history({}, 'a_openid', db)
+    expect(result.ok).toBe(true)
+    const rooms = result.data.rooms
+    expect(rooms.length).toBe(2)
+    const byId = {}
+    rooms.forEach(r => { byId[r._id] = r })
+    expect(byId[r1.data.roomId].myScore).toBe(10)
+    expect(byId[r1.data.roomId].statusType).toBe('left')  // a 退出了房间1
+    expect(byId[r2.data.roomId].statusType).toBe('closed')
+  })
+
+  test('已离开房间标记为 left', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert(
+      { _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'y' }
+    )
+    const r = await create({}, 'a_openid', db, { generateCode: generate })
+    await join({ code: r.data.code }, 'b_openid', db)
+    await leave({ roomId: r.data.roomId }, 'b_openid', db)
+
+    const result = await history({}, 'b_openid', db)
+    expect(result.ok).toBe(true)
+    expect(result.data.rooms[0].statusType).toBe('left')
+  })
+
+  test('从未加入任何房间返回空数组', async () => {
+    const db = setupDB()
+    const result = await history({}, 'zzz_openid', db)
+    expect(result.ok).toBe(true)
+    expect(result.data.rooms).toEqual([])
+  })
+
+  test('myScore 含茶水均摊（与房间内同算法）', async () => {
+    const db = setupDB()
+    db.collection('profiles')._insert(
+      { _id: 'b_openid', _openid: 'b_openid', nickName: 'B', avatarUrl: 'y' }
+    )
+    db.collection('profiles')._insert(
+      { _id: 'c_openid', _openid: 'c_openid', nickName: 'C', avatarUrl: 'z' }
+    )
+    // 3 人房间：A→B 50；A 付茶水 30；茶水每人均摊 10
+    const r = await create({}, 'a_openid', db, { generateCode: generate })
+    await join({ code: r.data.code }, 'b_openid', db)
+    await join({ code: r.data.code }, 'c_openid', db)
+    await score({
+      roomId: r.data.roomId,
+      entries: [{ toOpenid: 'b_openid', amount: 50 }]
+    }, 'a_openid', db)
+    // 推进时间避开 10s 去重
+    const orders = await db.collection('room_orders').where({ roomId: r.data.roomId }).get()
+    await db.collection('room_orders').doc(orders.data[0]._id).update({ data: { createdAt: Date.now() - 11000 } })
+    await score({
+      roomId: r.data.roomId,
+      entries: [{ toOpenid: '', amount: 30 }]
+    }, 'a_openid', db)
+
+    const hA = await history({}, 'a_openid', db)
+    const hB = await history({}, 'b_openid', db)
+    const hC = await history({}, 'c_openid', db)
+    // A: -50 + 30 - 10 = -30
+    expect(hA.data.rooms[0].myScore).toBe(-30)
+    // B: +50 + 0 - 10 = +40
+    expect(hB.data.rooms[0].myScore).toBe(40)
+    // C: 0 + 0 - 10 = -10
+    expect(hC.data.rooms[0].myScore).toBe(-10)
+    // 三人之和应为 0
+    expect(hA.data.rooms[0].myScore + hB.data.rooms[0].myScore + hC.data.rooms[0].myScore).toBe(0)
   })
 })

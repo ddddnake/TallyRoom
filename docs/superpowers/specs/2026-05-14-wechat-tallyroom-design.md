@@ -12,7 +12,7 @@
 ### 1.1 第一版功能范围
 
 - 创建房间 / 通过邀请码加入
-- 计分（付方 → 收方转账模型；含茶水费）
+- 计分（付方 → 收方记分模型；含茶水费）
 - 实时同步（`db.watch` 推送）
 - 房间结算视图（成员净分、茶水合计、消息流）
 - 退出房间 / 房主自动移交 / 主动关闭房间
@@ -223,7 +223,7 @@
 3. 校验 `entries`：
    - `amount` 必须正整数
    - `toOpenid` 若非空必须是该房 `state=1` 成员
-   - 不能给自己转账（`toOpenid !== openid`）
+   - 不能给自己记分（`toOpenid !== openid`）
    - 不满足任一 → `INVALID_AMOUNT` / `INVALID_TARGET`
 4. 事务：批量写多条 `room_orders`，每条带 `fromNickSnap` / `toNickSnap`
 5. 返回 `{ count: N }`
@@ -344,7 +344,7 @@ this.watchers = [
 - 测试用例覆盖：
   - 每个 action 的 happy path
   - 关键校验失败：`NO_PROFILE`、`ROOM_CLOSED`、`NOT_MEMBER`、`NOT_OWNER`、`INVALID_AMOUNT`、`INVALID_TARGET`
-  - 边界：房主退出无人 → 自动关房；重新加入 → 复用记录刷新快照；自我转账 → 拒绝
+  - 边界：房主退出无人 → 自动关房；重新加入 → 复用记录刷新快照；给自己记分 → 拒绝
 - 跑命令：`cd cloudfunctions/room && npm test`
 
 ### 7.2 前端手测清单（每次发布前过一遍）

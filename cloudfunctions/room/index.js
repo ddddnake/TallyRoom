@@ -21,6 +21,8 @@ exports.main = async (event, context) => {
       return handlers.close(data, OPENID, cloud.database())
     case 'sweep':
       return handlers.sweep(data, OPENID, cloud.database())
+    case 'history':
+      return handlers.history(data, OPENID, cloud.database())
     default:
       return { ok: false, code: 'UNKNOWN_ACTION', message: `未知 action: ${action}` }
   }

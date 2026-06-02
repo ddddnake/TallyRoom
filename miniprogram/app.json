@@ -8,7 +8,7 @@
   "window": {
     "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#ffffff",
-    "navigationBarTitleText": "",
+    "navigationBarTitleText": "牌友记账",
     "navigationBarTextStyle": "black"
   },
   "sitemapLocation": "sitemap.json",

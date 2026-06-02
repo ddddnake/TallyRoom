@@ -341,7 +341,7 @@ function compute(orders, members) {
       teaTotal += amt
       userScores[o.fromOpenid] = (userScores[o.fromOpenid] || 0) - amt
     } else {
-      // 转账：付方减，收方加
+      // 记分：付方减，收方加
       userScores[o.fromOpenid] = (userScores[o.fromOpenid] || 0) - amt
       userScores[o.toOpenid] = (userScores[o.toOpenid] || 0) + amt
     }
@@ -1167,7 +1167,7 @@ describe('score', () => {
     expect(result.code).toBe('INVALID_TARGET')
   })
 
-  test('不能给自己转账', async () => {
+  test('不能给自己记分', async () => {
     const db = setupDB()
     const roomId = await setupRoom(db, 'a_openid')
     const result = await score({
@@ -1236,7 +1236,7 @@ async function score(event, openid, db) {
     }
     if (e.toOpenid !== '' && e.toOpenid !== undefined && e.toOpenid !== null) {
       if (e.toOpenid === openid) {
-        return { ok: false, code: INVALID_TARGET, message: '不能给自己转账' }
+        return { ok: false, code: INVALID_TARGET, message: '不能给自己记分' }
       }
       if (!memberOpenids.has(e.toOpenid)) {
         return { ok: false, code: INVALID_TARGET, message: '收款方不是在场成员' }

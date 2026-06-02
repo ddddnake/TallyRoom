@@ -1,52 +1,169 @@
 .history-page {
-  padding: 24rpx;
-  background: var(--color-bg);
   min-height: 100vh;
+  padding: 28rpx 24rpx 48rpx;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 8% 6%, rgba(255, 80, 50, 0.11) 0, rgba(255, 80, 50, 0) 230rpx),
+    radial-gradient(circle at 92% 2%, rgba(255, 204, 132, 0.24) 0, rgba(255, 204, 132, 0) 260rpx),
+    var(--color-bg);
 }
 
-.room-swipe {
-  margin-bottom: 16rpx;
-  border-radius: 12rpx;
+.history-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 150rpx;
+  margin-bottom: 28rpx;
+  padding: 26rpx 28rpx;
+  border-radius: 34rpx;
+  background: linear-gradient(145deg, #fffaf2 0%, #fff0e2 100%);
+  box-shadow: var(--shadow-card);
+  box-sizing: border-box;
   overflow: hidden;
 }
+.history-copy {
+  flex: 1;
+  min-width: 0;
+}
+.history-title {
+  color: var(--color-text);
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.history-subtitle {
+  margin-top: 10rpx;
+  color: var(--color-text-secondary);
+  font-size: 25rpx;
+}
+.history-brand {
+  width: 112rpx;
+  height: 112rpx;
+  margin-left: 20rpx;
+  border-radius: 28rpx;
+}
 
+.empty-card {
+  margin-top: 80rpx;
+  border-radius: 30rpx;
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.loading-card {
+  margin-top: 80rpx;
+  padding: 50rpx 0;
+  border-radius: 30rpx;
+  background: #fff;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: 26rpx;
+}
+.room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+.room-swipe {
+  border-radius: 28rpx;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
 .room-item {
-  display: flex; align-items: center; justify-content: space-between;
-  background: #fff; padding: 32rpx 24rpx;
+  display: flex;
+  align-items: center;
+  min-height: 154rpx;
+  padding: 22rpx;
+  background: #fff;
+  box-sizing: border-box;
 }
-
-.room-delete {
-  width: 128rpx; height: 100%;
-  background: #ff2a1f;
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28rpx;
+.room-thumb {
+  width: 102rpx;
+  height: 102rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+  background: #fff4e8;
+  flex-shrink: 0;
+  margin-right: 20rpx;
 }
-.room-info { flex: 1; min-width: 0; }
+.room-thumb image {
+  width: 100%;
+  height: 100%;
+}
+.room-info {
+  flex: 1;
+  min-width: 0;
+}
 .room-name-row {
-  display: flex; align-items: center; gap: 12rpx;
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 .room-name {
-  font-size: 30rpx; font-weight: 600; color: #333;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  flex-shrink: 1; min-width: 0;
+  color: var(--color-text);
+  font-size: 30rpx;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.room-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 12rpx;
+}
+.room-date,
+.room-duration {
+  color: var(--color-text-secondary);
+  font-size: 23rpx;
+  line-height: 1.4;
+}
+.room-duration::before {
+  content: '· ';
+  color: #c6b9ad;
+}
+.room-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 14rpx;
 }
 .room-status {
-  font-size: 22rpx; padding: 4rpx 12rpx; border-radius: 16rpx;
-  flex-shrink: 0; line-height: 1.4;
+  display: inline-flex;
+  padding: 6rpx 14rpx;
+  border-radius: var(--radius-pill);
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .status-active { background: #e8f7ee; color: #52c41a; }
 .status-left { background: #fff5e6; color: #fa8c16; }
 .status-closed { background: #f0f0f0; color: #999; }
-.room-meta {
-  display: flex; align-items: center; gap: 8rpx;
-  margin-top: 8rpx;
-}
-.room-date { font-size: 24rpx; color: #999; }
-.room-duration { font-size: 24rpx; color: #999; }
 .room-score {
-  font-size: 36rpx; font-weight: 700;
-  flex-shrink: 0; margin-left: 16rpx;
+  margin-top: 14rpx;
+  font-size: 36rpx;
+  font-weight: 800;
+  line-height: 1;
 }
 .room-score.positive { color: #FF5032; }
 .room-score.negative { color: #52c41a; }
+.room-delete {
+  width: 144rpx;
+  height: 100%;
+  background: linear-gradient(135deg, #ff5032, #ff2a1f);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}

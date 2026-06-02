@@ -4,6 +4,8 @@
     "van-popup": "@vant/weapp/popup/index",
     "van-tag": "@vant/weapp/tag/index",
     "van-button": "@vant/weapp/button/index",
-    "van-dialog": "@vant/weapp/dialog/index"
+    "van-dialog": "@vant/weapp/dialog/index",
+    "van-loading": "@vant/weapp/loading/index",
+    "van-empty": "@vant/weapp/empty/index"
   }
 }

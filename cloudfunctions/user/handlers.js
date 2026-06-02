@@ -40,7 +40,7 @@ async function upsertProfile({ nickName, avatarUrl }, openid, db) {
     console.error('list active memberships failed:', e)
   }
 
-  return { ok: true, data: { refreshed } }
+  return { ok: true, data: { refreshed, openid } }
 }
 
 module.exports = { upsertProfile }

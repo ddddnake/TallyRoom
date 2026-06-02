@@ -4,8 +4,9 @@ const MAP = {
   ROOM_CLOSED: '房间已关闭',
   NOT_MEMBER: '你不是当前房间成员',
   NOT_OWNER: '仅房主可以执行此操作',
-  INVALID_AMOUNT: '金额必须为正整数',
-  INVALID_TARGET: '收款方无效',
+  INVALID_AMOUNT: '分数必须为正整数',
+  INVALID_TARGET: '对方不在房间内',
+  DUPLICATE_SCORE: '3 秒内不能重复记分',
   CODE_GENERATION_FAILED: '邀请码生成失败，请重试',
   ALREADY_IN_ROOM: '你还在另一个进行中的房间里',
   UNKNOWN: '服务异常，请重试'

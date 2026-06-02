@@ -3,3 +3,6 @@ miniprogram_npm/
 reference-app/
 *.rar
 .DS_Store
+.claude/
+project.private.config.json
+skills-lock.json

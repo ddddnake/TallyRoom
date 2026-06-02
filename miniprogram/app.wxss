@@ -1,10 +1,18 @@
 page {
   --color-primary: #ff5032;
+  --color-primary-dark: #f0341f;
+  --color-primary-soft: #fff0eb;
   --color-success: #52c41a;
   --color-warning: #fa8c16;
-  --color-bg: #f5f5f5;
+  --color-bg: #f8f5f0;
+  --color-bg-warm: #fff8ef;
   --color-card: #ffffff;
-  --color-text: #333333;
-  --color-text-secondary: #999999;
+  --color-text: #2f2a26;
+  --color-text-secondary: #8b837b;
+  --color-border: #f1e7dc;
+  --shadow-card: 0 14rpx 40rpx rgba(80, 50, 24, 0.08);
+  --shadow-soft: 0 8rpx 24rpx rgba(80, 50, 24, 0.06);
+  --radius-card: 28rpx;
+  --radius-pill: 999rpx;
   box-sizing: border-box;
 }

@@ -8,9 +8,34 @@
     "postcss": true,
     "minified": true,
     "urlCheck": false,
-    "checkSiteMap": false
+    "checkSiteMap": false,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "swc": false,
+    "disableSWC": true,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
   },
   "compileType": "miniprogram",
-  "appid": "YOUR_APPID_HERE",
-  "projectname": "tally-room"
+  "appid": "wxacbe3291fb5cef05",
+  "projectname": "牌友记账",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {},
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }

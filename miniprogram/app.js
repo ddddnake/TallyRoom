@@ -33,5 +33,11 @@ App({
   clearProfileCache() {
     this._profile = null
     this._profilePromise = null
+  },
+
+  /** 把刚刚保存的 profile 直接写入缓存，避免下一页 onShow 时遇到云数据库读写一致性延迟 */
+  setProfileCache(profile) {
+    this._profile = profile
+    this._profilePromise = null
   }
 })

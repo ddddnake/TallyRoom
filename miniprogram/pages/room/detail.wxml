@@ -1,104 +1,152 @@
 <view class="room-page">
-  <!-- 成员横滚 -->
-  <view class="users">
-    <scroll-view class="users-scroll" scroll-x enable-flex>
-      <view class="user-card" wx:for="{{visibleMembers}}" wx:key="userOpenid"
-            bindtap="onTapMember" data-openid="{{item.userOpenid}}" data-name="{{item.nickName}}">
-        <view class="user-avatar-wrap">
-          <view class="user-avatar">
-            <image class="user-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill"/>
+  <view class="room-loading-overlay" wx:if="{{!roomReady}}">
+    <van-loading size="40rpx" color="#ff5032">载入房间...</van-loading>
+  </view>
+
+  <view class="room-top" hidden="{{!roomReady}}">
+    <view class="room-title-bar">
+      <view class="room-title">{{info.name || '牌友房间'}}</view>
+      <view class="room-code" wx:if="{{info.code}}">房间号：{{info.code}}</view>
+    </view>
+
+    <view class="users-panel">
+      <view class="panel-head">
+        <text class="panel-title">本局成员</text>
+        <text class="panel-meta">{{activeMemberCount || 0}} 人在场</text>
+      </view>
+      <scroll-view class="users-scroll" scroll-x enable-flex>
+        <view class="user-card {{item.leftFlag ? 'user-card-left' : ''}}" wx:for="{{visibleMembers}}" wx:key="userOpenid"
+              bindtap="onTapMember" data-openid="{{item.userOpenid}}" data-name="{{item.nickName}}" data-left="{{item.leftFlag}}">
+          <view class="user-avatar-wrap">
+            <view class="user-avatar">
+              <image class="user-avatar-img" src="{{item.avatarUrl}}" mode="aspectFill"/>
+            </view>
+            <view wx:if="{{info.ownerOpenid === item.userOpenid}}" class="owner-badge">👑</view>
+          </view>
+          <view class="user-name">{{item.nickName}}</view>
+          <view wx:if="{{item.leftFlag}}" class="user-left-tag">已退出</view>
+          <view class="user-score {{aggregated[item.userOpenid] >= 0 ? 'positive' : 'negative'}}">
+            {{aggregated[item.userOpenid] >= 0 ? '+' : ''}}{{aggregated[item.userOpenid] || 0}}
           </view>
         </view>
-        <view class="user-name">
-          <text wx:if="{{info.ownerOpenid === item.userOpenid}}" class="owner-crown">👑</text>{{item.nickName}}
+
+        <view class="user-card feature-card invite-card" bindtap="onTapInvite">
+          <view class="feature-avatar invite-avatar">
+            <van-icon name="plus" size="42rpx" color="#999"/>
+          </view>
+          <view class="user-name">邀请好友</view>
+          <view class="feature-sub">扫码 / 分享</view>
         </view>
-        <view class="user-score {{aggregated[item.userOpenid] >= 0 ? 'positive' : 'negative'}}">
-          {{aggregated[item.userOpenid] >= 0 ? '+' : ''}}{{aggregated[item.userOpenid] || 0}}
+      </scroll-view>
+    </view>
+
+    <view class="tea-summary-card" bindtap="onTapTea">
+      <view class="tea-summary-left">
+        <view class="tea-summary-icon">
+          <image src="../../images/tea.png" mode="aspectFit"/>
+        </view>
+        <view class="tea-summary-copy">
+          <view class="tea-summary-title">茶水费</view>
+          <view class="tea-summary-sub">成员均摊，结算时自动计算</view>
         </view>
       </view>
-
-      <!-- 茶水虚拟卡片：点击直接给茶水加分 -->
-      <view class="user-card tea-card" bindtap="onTapTea">
-        <view class="user-avatar tea-avatar">
-          <image src="../../images/tea.png" mode="widthFix" style="width:100%;height:100%"/>
-        </view>
-        <view class="user-name">茶水费</view>
-        <view class="user-score positive">+{{teaTotal || 0}}</view>
-      </view>
-
-      <!-- 邀请按钮 -->
-      <view class="user-card invite-card" bindtap="onTapInvite">
-        <view class="user-avatar invite-avatar">
-          <text class="invite-plus">+</text>
-        </view>
-        <view class="user-name">邀请好友</view>
-        <view class="user-score" style="font-size:24rpx;color:#999">扫码 / 分享</view>
-      </view>
-    </scroll-view>
-  </view>
-
-  <!-- 操作提示 -->
-  <view class="action-hint" wx:if="{{!readOnly && info.state === 1}}">
-    点自己头像改资料 · 点别人头像转账 · 点茶水图标记茶水费
-  </view>
-
-  <!-- 消息流 -->
-  <scroll-view class="msg-scroll" scroll-y="{{true}}" scroll-into-view="{{lastMsgId}}">
-    <view class="msg-item" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
-      <view class="msg-time">{{item.timeText}}</view>
-      <view class="msg-text">
-        <text wx:for="{{item.parts}}" wx:for-item="part" wx:key="index" class="msg-part-{{part.type}}">{{part.text}}</text>
+      <view class="tea-summary-right">
+        <view class="tea-summary-total">已收 <text>{{teaTotal || 0}}</text> 分</view>
+        <view class="tea-summary-action">点此记茶水</view>
       </view>
     </view>
-    <van-empty wx:if="{{!messages.length}}" description="暂无记录" />
+  </view>
+
+  <view class="action-hint" wx:if="{{roomReady && !readOnly && info.state === 1}}">
+    <van-icon name="info-o" size="26rpx" color="#fa8c16"/>
+    <text>点自己头像改资料 · 点别人头像记分 · 点茶水图标记茶水费</text>
+  </view>
+
+  <scroll-view class="msg-scroll" scroll-y="{{true}}" scroll-into-view="{{lastMsgId}}" hidden="{{!roomReady}}">
+    <view class="message-list">
+      <view class="msg-group" wx:for="{{groups}}" wx:for-item="group" wx:key="id">
+        <view class="msg-group-head">
+          <text class="msg-group-label">{{group.label}}</text>
+          <text class="msg-group-count">{{group.count}} 笔</text>
+        </view>
+        <view class="msg-group-body">
+          <view class="msg-item {{item.pending ? 'msg-pending' : ''}}" wx:for="{{group.messages}}" wx:for-item="item" wx:key="id" id="msg-{{item.id}}">
+            <view class="msg-time">{{item.timeText}}</view>
+            <view class="msg-text">
+              <view class="msg-main">
+                <text wx:for="{{item.parts}}" wx:for-item="part" wx:key="index" wx:if="{{part.type !== 'amount' && part.text !== ' 分'}}" class="msg-part-{{part.type}}">{{part.text}}</text>
+              </view>
+              <view class="msg-amount-side">
+                <text wx:for="{{item.parts}}" wx:for-item="part" wx:key="index" wx:if="{{part.type === 'amount'}}" class="msg-part-amount">{{part.text}}</text>
+                <text class="msg-unit">分</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="empty-card" wx:if="{{!groups.length}}">
+        <van-empty description="暂无记录" />
+      </view>
+    </view>
   </scroll-view>
 
-  <!-- 底部操作栏 -->
-  <view class="footer" wx:if="{{!readOnly && info.state === 1}}">
-    <view class="footer-btn" bindtap="onShowSettlement">结算</view>
-    <view class="footer-btn" bindtap="onLeave">退出</view>
-    <view class="footer-btn" wx:if="{{info.ownerOpenid === myOpenid}}" bindtap="onCloseRoom">关闭房间</view>
+  <view class="footer" wx:if="{{roomReady && !readOnly && info.state === 1}}">
+    <view class="footer-btn footer-primary" bindtap="onShowSettlement">
+      <van-icon name="bar-chart-o" size="28rpx" color="#fff"/>
+      <text>结算</text>
+    </view>
+    <view class="footer-btn footer-secondary" bindtap="onLeave">
+      <van-icon name="revoke" size="28rpx" color="#333" />
+      <text>退出房间</text>
+    </view>
+    <view class="footer-btn footer-secondary" wx:if="{{info.ownerOpenid === myOpenid}}" bindtap="onCloseRoom">
+      <van-icon name="close" size="28rpx" color="#333" />
+      <text>关闭房间</text>
+    </view>
   </view>
 
-  <!-- 只读提示 -->
-  <view class="footer readonly-hint" wx:if="{{readOnly || info.state === 2}}">
-    <view class="footer-btn" bindtap="onShowSettlement">查看结算</view>
+  <view class="footer readonly-hint" wx:if="{{roomReady && (readOnly || info.state === 2)}}">
+    <view class="footer-btn footer-primary footer-single" bindtap="onShowSettlement">
+      <van-icon name="bar-chart-o" size="28rpx" color="#fff"/>
+      <text>查看结算</text>
+    </view>
   </view>
 
-  <!-- 快速计分弹层 -->
-  <van-popup show="{{showQuickScore}}" bind:close="onCloseQuickScore" custom-style="background:none">
+  <van-popup show="{{showQuickScore}}" bind:close="onCloseQuickScore" custom-style="background:none;top:39%;">
     <view class="quick-score-popup">
+      <view class="popup-icon"><van-icon name="edit" size="44rpx" color="#FF5032"/></view>
       <view class="quick-score-title">{{quickTargetName}}</view>
-      <view class="quick-score-hint">输入你转给 ta 的分数</view>
-      <input class="quick-score-input" type="number" placeholder="分数" value="{{quickAmount}}" bindinput="onQuickInput" focus="{{showQuickScore}}"/>
+      <view class="quick-score-hint">输入本次记分数值</view>
+      <input class="quick-score-input" type="number" placeholder="分数" value="{{quickAmount}}" bindinput="onQuickInput" focus="{{quickFocus}}"/>
       <view class="quick-score-actions">
-        <van-button plain round bindtap="onCloseQuickScore">取消</van-button>
-        <van-button type="primary" round color="#FF5032" bindtap="onSubmitQuickScore">确定</van-button>
+        <van-button plain block round bindtap="onCloseQuickScore">取消</van-button>
+        <van-button type="primary" block round color="#FF5032" bindtap="onSubmitQuickScore">确定</van-button>
       </view>
     </view>
   </van-popup>
 
-  <!-- 个人资料编辑弹层 -->
   <van-popup show="{{showProfileEditor}}" bind:close="onCloseProfileEditor" custom-style="background:none">
     <view class="profile-editor">
       <view class="profile-editor-title">编辑个人资料</view>
       <button class="profile-avatar-btn" open-type="chooseAvatar" bindchooseavatar="onEditChooseAvatar">
         <image class="profile-avatar-img" src="{{editAvatarDisplay}}" mode="aspectFill" wx:if="{{editAvatarDisplay}}"/>
-        <van-icon name="plus" size="48rpx" color="#ccc" wx:else/>
+        <van-icon name="plus" size="48rpx" color="#ff8a68" wx:else/>
       </button>
       <view class="profile-avatar-hint">点击更换头像</view>
       <input class="profile-nick-input" type="nickname" placeholder="昵称" value="{{editNickName}}" bindinput="onEditNickInput"/>
       <view class="profile-editor-actions">
-        <van-button plain round bindtap="onCloseProfileEditor">取消</van-button>
-        <van-button type="primary" round color="#FF5032" bindtap="onSaveProfile">保存</van-button>
+        <van-button plain block round bindtap="onCloseProfileEditor">取消</van-button>
+        <van-button type="primary" block round color="#FF5032" bindtap="onSaveProfile">保存</van-button>
       </view>
       <view class="profile-editor-tip">说明：修改后，本房间内已有的记录依然显示原昵称，新房间和新计分会用新昵称。</view>
     </view>
   </van-popup>
 
-  <!-- 邀请好友弹层 -->
   <van-popup show="{{showInvite}}" bind:close="onCloseInvite" custom-style="background:none">
     <view class="invite-popup">
+      <view class="invite-hero invite-hero-icon">
+        <image src="../../images/invite.png" mode="aspectFit"/>
+      </view>
       <view class="invite-title">邀请好友加入</view>
       <view class="invite-qrcode-wrap">
         <image wx:if="{{inviteQrUrl}}" class="invite-qrcode" src="{{inviteQrUrl}}" mode="aspectFit"/>
@@ -120,17 +168,14 @@
     </view>
   </van-popup>
 
-  <!-- 结算弹层 -->
-  <van-popup show="{{showSettlement}}" bind:close="onCloseSettlement" position="bottom" round custom-style="max-height:85vh">
+  <van-popup show="{{showSettlement}}" bind:close="onCloseSettlement" position="bottom" round custom-style="max-height:85vh;background:#f8f5f0">
     <view class="settle-popup">
       <view class="settle-title">本局结算</view>
 
-      <!-- 茶水分摊提示 -->
       <view class="settle-tea-tip" wx:if="{{settleData.teaTotal > 0}}">
         茶水共 <text class="settle-tea-amount">{{settleData.teaTotal}}</text> 分，{{settleData.memberCount}} 人均摊每人 <text class="settle-tea-amount">{{settleData.teaShareDisplay}}</text> 分
       </view>
 
-      <!-- 每人净分（含茶水均摊） -->
       <view class="settle-section-title">每人净分</view>
       <view class="settle-list">
         <view class="settle-row" wx:for="{{settleData.summary}}" wx:key="openid">
@@ -147,10 +192,9 @@
         </view>
       </view>
 
-      <!-- 转账方案 -->
-      <view class="settle-section-title">最少转账方案</view>
+      <view class="settle-section-title">最少结算方案</view>
       <view class="settle-empty" wx:if="{{!settleData.transfers.length}}">
-        无需转账（所有人都是 0 分）
+        无需结算（所有人都是 0 分）
       </view>
       <view class="settle-transfers" wx:if="{{settleData.transfers.length}}">
         <view class="settle-transfer" wx:for="{{settleData.transfers}}" wx:key="index">
